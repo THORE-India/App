@@ -10,7 +10,6 @@ const STATIC_ASSETS = [
   '/index.html',
   '/styles.css',
   '/script.js',
-  '/manifest.json'
 ];
 
 // Install event
