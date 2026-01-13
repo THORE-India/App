@@ -1,7 +1,7 @@
 // ============================================
 // CONFIGURATION - UPDATE THIS WITH YOUR APPS SCRIPT URL
 // ============================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbwUV81uoiyjN8s7R-iZT4UfL806LcCWDlWwXJ_YAjzeOyyz4UiLUU7ILZlK9MG4i8UwfQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw2XDf03HVFPIILNHNZe_RJe4drUhHndLf-5zZS69E56s9ks-_mpYJ849_I0mccjoByhA/exec';
 // Example: 'https://script.google.com/macros/s/AKfycbxxx.../exec'
 
 // ============================================
