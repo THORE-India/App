@@ -12,32 +12,36 @@ let deferredPrompt;
 let notificationCheckInterval;
 
 // ============================================
-// API CALL FUNCTION
+// API CALL FUNCTION (GAS SAFE – NO CORS)
 // ============================================
 async function apiCall(action, params = {}) {
   try {
+    const payload = {
+      action: action,
+      ...params
+    };
+
+    const body = Object.keys(payload)
+      .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(payload[key]))
+      .join('&');
+
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify({
-        action: action,
-        ...params
-      })
+      body: body
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
 
     const data = await response.json();
     return data;
+
   } catch (error) {
     console.error('API call failed:', error);
     throw error;
   }
 }
+
 
 // ============================================
 // INITIALIZATION
