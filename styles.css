@@ -643,6 +643,7 @@ body {
 
 .link-card:active {
   transform: scale(0.98);
+  height: 88px;
 }
 
 .link-info {
@@ -660,9 +661,11 @@ body {
 .link-url {
   font-size: 13px;
   color: #94a3b8;
+  max-width: 100%;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
 }
 
 .link-icon {
