@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="THORE India">
+  <meta name="theme-color" content="#d4af37">
+  <meta name="description" content="THORE India Portal - Secure company resource access">
+  
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png">
+  <link rel="apple-touch-icon" href="https://i.postimg.cc/VLXmBdMf/THORE-Favicon.png">
+  <link rel="manifest" href="manifest.json">
+  
+  <title>THORE India Portal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Welcome Screen -->
+    <div id="welcomeScreen" class="screen active">
+      <div class="welcome-container">
+        <div class="welcome-logo">
+          <div class="logo-img-container" style="margin-bottom: 20px;">
+            <img src="https://i.postimg.cc/Zn1FxwGS/Company-Logo-no-background.png" alt="Company Logo">
+          </div>
+        </div>
+        <h1 class="welcome-title" style="margin-top: 0;">Welcome to</h1>
+        <h2 class="welcome-company" style="margin-top: 5px;">THORE India</h2>
+        <div class="welcome-loader">
+          <div class="loader-dot"></div>
+          <div class="loader-dot"></div>
+          <div class="loader-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen">
+      <div class="login-container">
+        <div class="login-header" style="text-align: center;">
+          <div class="logo-img-container" style="width: 150px; height: 80px; margin: 0 auto 20px auto;">
+            <img src="https://i.postimg.cc/Zn1FxwGS/Company-Logo-no-background.png" alt="Company Logo" style="width: 100%; height: auto; display: block;">
+          </div>
+          <h1>THORE India Portal</h1>
+          <p>Sign in to continue</p>
+        </div>
+
+        <form id="loginForm" class="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" class="form-input" placeholder="name.sirname@thoreindia.com" required />
+          </div>
+          
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Enter your password" required />
+          </div>
+          
+          <div id="loginError" class="error-message"></div>
+          
+          <button type="submit" id="loginBtn" class="btn-primary">
+            <span id="loginBtnText">Sign In</span>
+            <span id="loginBtnLoader" class="btn-loader" style="display:none;">
+              <div class="spinner-small"></div>
+            </span>
+          </button>
+        </form>
+        
+        <div class="login-footer">
+          <p>Use your company email (@thoreindia.com)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Announcement Screen -->
+    <div id="announcementScreen" class="screen">
+      <div class="announcement-container">
+        <div id="announcementContent"></div>
+        <button onclick="closeAnnouncement()" class="btn-primary">Continue</button>
+      </div>
+    </div>
+
+    <!-- Main App Screen -->
+    <div id="mainScreen" class="screen">
+      <header id="header">
+        <div class="header-content">
+          <button id="menuBtn" class="icon-btn" onclick="toggleMenu()">
+            <svg id="menuIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12h18M3 6h18M3 18h18"/>
+            </svg>
+            <svg id="closeIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+          <div class="logo">
+            <img src="https://i.postimg.cc/Zn1FxwGS/Company-Logo-no-background.png" alt="Company Logo" class="logo-img-small">
+          </div>
+          <button class="icon-btn notification-btn" onclick="showNotifications()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span id="notificationBadge" class="notification-badge" style="display:none;">0</span>
+          </button>
+        </div>
+        
+        <div id="sideMenu" class="side-menu">
+          <div class="menu-content">
+            <div class="menu-section">
+              <div class="user-info">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                  <div class="user-name" id="userName">User Name</div>
+                  <div class="user-email" id="userEmail">user@thoreindia.com</div>
+                </div>
+              </div>
+            </div>
+            <button class="menu-item" onclick="showDataRequestPortal()">📊 Request Data</button>
+            <button class="menu-item" onclick="showMyRequests()">📋 My Requests</button>
+            <button class="menu-item" id="opsMenuBtn" onclick="showOperationsPanel()" style="display:none;">⚙️ Operations Panel</button>
+            <button class="menu-item" onclick="showAnnouncements()">📢 Announcements</button>
+            <button class="menu-item" onclick="showSettings()">⚙️ Settings</button>
+            <button class="menu-item" onclick="showAbout()">ℹ️ About</button>
+            <button class="menu-item logout-btn" onclick="logout()">🚪 Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <div id="installPrompt" class="install-prompt">
+        <div class="install-content">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          <div class="install-text">
+            <h3>Install App</h3>
+            <p>Add to home screen for quick access</p>
+            <div class="install-actions">
+              <button onclick="installApp()" class="btn-install">Install</button>
+              <button onclick="dismissInstall()" class="btn-later">Later</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main class="main-content" id="linksView">
+        <div class="page-header">
+          <h1>Quick Links</h1>
+          <p>Access your important resources</p>
+        </div>
+
+        <div id="loadingSpinner" class="loading">
+          <div class="spinner"></div>
+          <p>Loading links...</p>
+        </div>
+
+        <div id="linksContainer" class="links-grid"></div>
+
+        <div class="install-instructions">
+          <h3>📱 How to Install</h3>
+          <ol>
+            <li>Open this page in Chrome browser</li>
+            <li>Tap the menu (⋮) in the top right</li>
+            <li>Select "Add to Home screen"</li>
+            <li>Tap "Add" to confirm</li>
+          </ol>
+        </div>
+      </main>
+
+      <main class="main-content" id="dataRequestView" style="display:none;">
+        <div class="page-header">
+          <button onclick="showLinksView()" class="back-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <h1>Request Data</h1>
+          <p>Submit your data requirements</p>
+        </div>
+
+        <div class="request-form-container">
+          <form id="dataRequestForm" class="data-request-form">
+            <div class="form-info-card">
+              <div class="info-row">
+                <span class="info-label">Requested By:</span>
+                <span class="info-value" id="reqUserName">-</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Role:</span>
+                <span class="info-value" id="reqUserRole">-</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Date & Time:</span>
+                <span class="info-value" id="reqDateTime">-</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="remarks">Request Details</label>
+              <textarea id="remarks" class="form-textarea" rows="6" placeholder="Example: Mumbai leads, January 2026, New leads only, Projects: XYZ Tower, ABC Heights" required></textarea>
+              <small class="form-hint">Include: Location, Date range, Project names, Lead type (new/old/visited), Employee names (for TL)</small>
+            </div>
+
+            <div id="requestError" class="error-message"></div>
+            <div id="requestSuccess" class="success-message"></div>
+
+            <button type="submit" id="submitRequestBtn" class="btn-primary">
+              <span id="submitBtnText">Submit Request</span>
+              <span id="submitBtnLoader" class="btn-loader" style="display:none;">
+                <div class="spinner-small"></div>
+              </span>
+            </button>
+          </form>
+
+          <div class="estimated-time-info">
+            <h3>⏱️ Estimated Processing Time</h3>
+            <p>Your request will be processed in approximately <strong id="estimatedTime">20 mins</strong></p>
+            <small>Time may vary based on current queue</small>
+          </div>
+        </div>
+      </main>
+
+      <main class="main-content" id="myRequestsView" style="display:none;">
+        <div class="page-header">
+          <button onclick="showLinksView()" class="back-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <h1>My Requests</h1>
+          <p>Track your data requests</p>
+        </div>
+
+        <div id="myRequestsLoading" class="loading">
+          <div class="spinner"></div>
+          <p>Loading your requests...</p>
+        </div>
+
+        <div id="myRequestsContainer"></div>
+      </main>
+
+      <main class="main-content" id="operationsView" style="display:none;">
+        <div class="page-header">
+          <button onclick="showLinksView()" class="back-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <h1>Operations Panel</h1>
+          <p>Manage data requests</p>
+        </div>
+
+        <div id="operationsStatsContainer" class="stats-container"></div>
+
+        <div id="operationsLoading" class="loading">
+          <div class="spinner"></div>
+          <p>Loading requests...</p>
+        </div>
+
+        <div id="operationsContainer"></div>
+      </main>
+
+      <div id="notificationsPanel" class="notifications-panel">
+        <div class="notifications-header">
+          <h2>Notifications</h2>
+          <button onclick="closeNotifications()" class="close-notif-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div id="notificationsContent" class="notifications-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
