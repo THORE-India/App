@@ -222,7 +222,18 @@ function showMainApp() {
   loadLinks();
   checkIfOperationsTeam();
   startNotificationPolling();
+
+  const searchInput = document.getElementById('globalSearch');
+  searchInput.value = '';
   
+  searchInput.oninput = e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.link-card').forEach(card => {
+      card.style.display = card.innerText.toLowerCase().includes(q)
+        ? 'flex'
+        : 'none';
+    });
+  };
   if (!window.matchMedia('(display-mode: standalone)').matches) {
     setTimeout(function() {
       document.getElementById('installPrompt').classList.add('show');
@@ -253,14 +264,6 @@ function updateDateTime() {
   };
   document.getElementById('reqDateTime').textContent = now.toLocaleString('en-IN', options);
 }
-
-  document.getElementById('globalSearch').addEventListener('input', e => {
-    const q = e.target.value.toLowerCase();
-    document.querySelectorAll('.link-card').forEach(card => {
-      const text = card.innerText.toLowerCase();
-      card.style.display = text.includes(q) ? '' : 'none';
-    });
-  });
 
 function togglePin(url) {
   let pins = JSON.parse(localStorage.getItem('pinnedLinks') || '[]');
@@ -346,6 +349,7 @@ function showError(error) {
 }
 
 function openLink(url) {
+  trackRecent(url);
   var link = document.createElement('a');
   link.href = url;
   link.target = '_blank';
@@ -920,13 +924,16 @@ window.addEventListener('online', () => {
 let startY = 0;
 
 document.addEventListener('touchstart', e => {
-  startY = e.touches[0].clientY;
+  if (window.scrollY === 0) {
+    startY = e.touches[0].clientY;
+  }
 });
 
 document.addEventListener('touchend', e => {
   const endY = e.changedTouches[0].clientY;
-  if (endY - startY > 120) {
+  if (window.scrollY === 0 && endY - startY > 140) {
     loadLinks();
   }
 });
+
 
