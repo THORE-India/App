@@ -1,78 +1,59 @@
 // ===============================
-// SAFE SERVICE WORKER (API-SAFE)
+// MINIMAL & ROOT-SAFE SERVICE WORKER
 // ===============================
 
-const CACHE_NAME = 'thore-portal-v2';
+const CACHE_NAME = 'thore-static-v1';
 
-// Cache ONLY local static assets
+// ONLY same-origin, guaranteed files
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/styles.css',
-  '/script.js',
+  '/script.js'
 ];
 
-// Install event
+// Install – cache static files only
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log('Opened cache');
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('[SW] Caching static assets');
+        return cache.addAll(STATIC_ASSETS);
+      })
+      .catch(err => {
+        console.error('[SW] Install failed:', err);
+      })
   );
-  self.skipWaiting();
 });
 
-// Activate event
+// Activate – clean old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(name => {
-          if (name !== CACHE_NAME) {
-            return caches.delete(name);
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            console.log('[SW] Deleting old cache:', key);
+            return caches.delete(key);
           }
         })
-      );
-    })
+      )
+    )
   );
-  self.clients.claim();
 });
 
-// Fetch event
+// Fetch – ONLY serve cached static GET requests
 self.addEventListener('fetch', event => {
-  const url = event.request.url;
+  // Do not touch non-GET
+  if (event.request.method !== 'GET') return;
 
-  // 🚫 DO NOT INTERCEPT API CALLS
-  if (
-    event.request.method !== 'GET' ||
-    url.includes('script.google.com')
-  ) {
-    return;
-  }
+  // Do not touch APIs or external domains
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request);
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
     })
   );
-});
-
-// Push notifications (unchanged)
-self.addEventListener('push', event => {
-  const options = {
-    body: event.data ? event.data.text() : 'New notification',
-    icon: '/manifest.json',
-    vibrate: [200, 100, 200]
-  };
-
-  event.waitUntil(
-    self.registration.showNotification('THORE India Portal', options)
-  );
-});
-
-// Notification click
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  event.waitUntil(clients.openWindow('/'));
 });
