@@ -2,12 +2,12 @@
   "name": "THORE India Portal",
   "short_name": "THORE",
   "description": "Secure company resource access with data request management",
-  "start_url": "/",
+  "start_url": "/App/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#00000000",
   "theme_color": "#d4af37",
   "orientation": "portrait-primary",
-  "scope": "/",
+  "scope": "/App/",
   "icons": [
     {
       "src": "https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png",
