@@ -6,10 +6,10 @@ const CACHE_NAME = 'thore-static-v1';
 
 // ONLY same-origin, guaranteed files
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/script.js'
+  './',
+  './index.html',
+  './styles.css',
+  './script.js'
 ];
 
 // Install – cache static files only
@@ -56,4 +56,12 @@ self.addEventListener('fetch', event => {
       return response || fetch(event.request);
     })
   );
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('./index.html'))
+    );
+  }
 });
