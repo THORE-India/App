@@ -760,11 +760,14 @@ async function loadNotifications() {
     const notifications = await apiCall('getUnreadNotifications', { userEmail: currentUser.email });
     updateNotificationBadge(notifications.length);
     
-    // Show browser notification if there are new ones
-    if (notifications.length > 0 && Notification.permission === 'granted') {
-      new Notification('THORE India Portal', {
-        body: `You have ${notifications.length} new notification(s)`,
-        icon: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png'
+    if (notifications.length > 0 && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        payload: {
+          title: 'THORE India Portal',
+          body: `You have ${notifications.length} new notification(s)`,
+          count: notifications.length
+        }
       });
     }
   } catch (error) {
