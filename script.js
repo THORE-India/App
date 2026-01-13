@@ -254,6 +254,22 @@ function updateDateTime() {
   document.getElementById('reqDateTime').textContent = now.toLocaleString('en-IN', options);
 }
 
+  document.getElementById('globalSearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.link-card').forEach(card => {
+      const text = card.innerText.toLowerCase();
+      card.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+
+function togglePin(url) {
+  let pins = JSON.parse(localStorage.getItem('pinnedLinks') || '[]');
+  pins = pins.includes(url) ? pins.filter(p => p !== url) : [...pins, url];
+  localStorage.setItem('pinnedLinks', JSON.stringify(pins));
+}
+
+
+
 // ============================================
 // OPERATIONS TEAM CHECK
 // ============================================
@@ -338,6 +354,13 @@ function openLink(url) {
   link.click();
   document.body.removeChild(link);
 }
+
+function trackRecent(url) {
+  let recent = JSON.parse(localStorage.getItem('recentLinks') || '[]');
+  recent = [url, ...recent.filter(r => r !== url)].slice(0, 5);
+  localStorage.setItem('recentLinks', JSON.stringify(recent));
+}
+
 
 // ============================================
 // VIEW NAVIGATION
@@ -885,3 +908,25 @@ function escapeHtml(text) {
   div.textContent = text.toString();
   return div.innerHTML;
 }
+
+window.addEventListener('offline', () => {
+  showScreen('offlineScreen');
+});
+
+window.addEventListener('online', () => {
+  location.reload();
+});
+
+let startY = 0;
+
+document.addEventListener('touchstart', e => {
+  startY = e.touches[0].clientY;
+});
+
+document.addEventListener('touchend', e => {
+  const endY = e.changedTouches[0].clientY;
+  if (endY - startY > 120) {
+    loadLinks();
+  }
+});
+
