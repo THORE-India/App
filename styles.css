@@ -307,6 +307,27 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Register Button */
+.btn-register {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 24px;
+  background: rgba(212, 175, 55, 0.1);
+  color: #d4af37;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-register:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: rgba(212, 175, 55, 0.5);
+  transform: translateY(-1px);
+}
+
 .login-footer {
   margin-top: 24px;
   text-align: center;
@@ -457,7 +478,7 @@ body {
   gap: 8px;
 }
 
-/* Side Menu */
+/* Side Menu - MODERNIZED */
 .side-menu {
   max-height: 0;
   overflow: hidden;
@@ -467,16 +488,23 @@ body {
 }
 
 .side-menu.open {
-  max-height: 500px;
+  max-height: 600px;
 }
 
 .menu-content {
   padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .menu-section {
   padding-bottom: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.menu-section:last-of-type {
+  border-bottom: none;
 }
 
 .menu-item {
@@ -484,17 +512,28 @@ body {
   text-align: left;
   padding: 12px 16px;
   border: none;
-  background: none;
+  background: rgba(212, 175, 55, 0.05);
   border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s;
+  margin-bottom: 6px;
   color: #e2e8f0;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .menu-item:hover {
-  background: rgba(212, 175, 55, 0.1);
+  background: rgba(212, 175, 55, 0.15);
+  border-color: rgba(212, 175, 55, 0.3);
+  transform: translateX(4px);
+}
+
+.menu-item:active {
+  transform: translateX(2px);
 }
 
 /* Install Prompt */
@@ -594,6 +633,31 @@ body {
   color: #94a3b8;
 }
 
+/* Search Input - STYLED */
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  border: 2px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  color: #f1f5f9;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  background: #1e293b;
+}
+
 /* Loading */
 .loading {
   text-align: center;
@@ -621,6 +685,7 @@ body {
   gap: 12px;
 }
 
+/* Link Card - FIXED OVERFLOW */
 .link-card {
   background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
   border-radius: 12px;
@@ -631,8 +696,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   transition: all 0.2s;
   cursor: pointer;
+  min-width: 0; /* CRITICAL FOR FLEX OVERFLOW */
+  overflow: hidden; /* PREVENT CONTENT OVERFLOW */
 }
 
 .link-card:hover {
@@ -643,12 +711,12 @@ body {
 
 .link-card:active {
   transform: scale(0.98);
-  height: 88px;
 }
 
 .link-info {
   flex: 1;
-  min-width: 0;
+  min-width: 0; /* CRITICAL FOR TEXT OVERFLOW */
+  overflow: hidden;
 }
 
 .link-title {
@@ -656,22 +724,27 @@ body {
   font-weight: 600;
   color: #f1f5f9;
   margin-bottom: 4px;
-}
-
-.link-url {
-  font-size: 13px;
-  color: #94a3b8;
-  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.link-url {
+  font-size: 13px;
+  color: #94a3b8;
+  white-space: nowrap; /* PREVENT WRAP */
+  overflow: hidden; /* HIDE OVERFLOW */
+  text-overflow: ellipsis; /* SHOW ... */
+  display: block; /* ENSURE BLOCK LEVEL */
+}
+
 .link-icon {
   flex-shrink: 0;
-  margin-left: 12px;
   color: #d4af37;
+  width: 20px;
+  height: 20px;
 }
+
 
 /* Installation Instructions */
 .install-instructions {
@@ -1150,6 +1223,49 @@ padding: 12px;
   #app {
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
     border-radius: 16px;
+  }
+}
+/* DESKTOP LAYOUT */
+@media (min-width: 1024px) {
+  .main-content {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .links-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .install-instructions {
+    max-width: 700px;
+    margin: 40px auto;
+  }
+
+  .request-form-container,
+  #myRequestsContainer,
+  #operationsContainer {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .side-menu {
+    max-height: none;
+    width: 280px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1500;
+    border-right: 1px solid rgba(212,175,55,.2);
+  }
+
+  #header {
+    margin-left: 280px;
+  }
+
+  .main-content {
+    margin-left: 280px;
   }
 }
 
