@@ -22,6 +22,7 @@ body {
 .screen {
   display: none;
   min-height: 100vh;
+  width: 100%;
 }
 
 .screen.active {
@@ -1226,26 +1227,21 @@ padding: 12px;
     top: 0;
     width: 280px;
     height: 100vh;
-    overflow-y: auto;
     z-index: 1001;
   }
 
-  /* The only place we offset the layout */
   .screen.active {
+    width: calc(100vw - 280px);
     margin-left: 280px;
-    width: calc(100% - 280px);
     min-height: 100vh;
   }
 
-  /* Header and content stay normal */
   #header {
     position: sticky;
     top: 0;
-    margin-left: 0;
   }
 
   .main-content {
-    margin-left: 0;
     padding: 32px 48px;
   }
 
