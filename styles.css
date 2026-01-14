@@ -1219,53 +1219,5 @@ padding: 12px;
 }
 }</parameter>
 
-/* DESKTOP LAYOUT - 1024px and above */
-@media (min-width: 1024px) {
-  #app {
-    display: block;
-  }
 
-  .screen.active {
-    display: block;
-    margin-left: 280px;
-    width: calc(100vw - 280px);
-    min-height: 100vh;
-  }
-
-  #header {
-    position: fixed;
-    left: 280px;
-    right: 0;
-    top: 0;
-    height: 60px;
-    z-index: 1000;
-  }
-
-  .main-content {
-    margin-top: 60px;
-    height: calc(100vh - 60px);
-    overflow-y: auto;
-  }
-}
-
-
-
-/* Extra large screens */
-@media (min-width: 1440px) {
-  .screen.active {
-    max-width: 1400px;
-    margin-left: 280px;
-    margin-right: auto;
-  }
-
-  .main-content {
-    padding-left: 48px;
-    padding-right: 48px;
-  }
-
-  #header {
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-}
 
