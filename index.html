@@ -125,9 +125,10 @@
               </div>
             </div>
             <button class="menu-item" onclick="showLinksView()">
-              <svg class="menu-icon" viewBox="0 0 24 24">
-                <path d="M3 12h18M12 3v18"/>
-              </svg>
+                <svg class="menu-icon" viewBox="0 0 24 24">
+                  <path d="M3 11l9-8 9 8"/>
+                  <path d="M9 22V12h6v10"/>
+                </svg>
               Home
             </button>
             
@@ -148,14 +149,17 @@
             
             <button class="menu-item" id="opsMenuBtn" onclick="showOperationsPanel()" style="display:none;">
               <svg class="menu-icon" viewBox="0 0 24 24">
-                <path d="M12 2v20M2 12h20"/>
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a7.5 7.5 0 0 0 0-6"/>
+                <path d="M4.6 9a7.5 7.5 0 0 0 0 6"/>
               </svg>
               Operations
             </button>
             
             <button class="menu-item" onclick="showAnnouncements()">
               <svg class="menu-icon" viewBox="0 0 24 24">
-                <path d="M4 11h16M12 2v20"/>
+                <path d="M3 11l18-5v12l-18-5z"/>
+                <path d="M11 19a3 3 0 0 1-6 0"/>
               </svg>
               Announcements
             </button>
