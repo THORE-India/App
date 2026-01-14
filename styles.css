@@ -1103,7 +1103,7 @@ body {
   position: fixed;
   top: 0;
   right: 0;
-  width: 100%;
+  width: 100vw;
   max-width: 400px;
   height: 100vh;
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
@@ -1114,6 +1114,13 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+@media (max-width: 480px) {
+  .notifications-panel {
+    max-width: 100vw;
+  }
+}
+
 
 .notifications-panel.open {
   transform: translateX(0);
