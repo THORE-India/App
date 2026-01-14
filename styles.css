@@ -1245,14 +1245,12 @@ padding: 12px;
   
   /* Adjust header for desktop */
   #header {
-    margin-left: 280px;
     position: sticky;
     top: 0;
   }
   
   /* Adjust all main content areas for desktop */
   .main-content {
-    margin-left: 280px;
     padding: 32px 48px;
     min-height: calc(100vh - 60px);
   }
@@ -1282,5 +1280,12 @@ padding: 12px;
     max-width: calc(1400px + 280px);
     margin-left: auto;
     margin-right: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .screen.active {
+    margin-left: 280px;
+    width: calc(100% - 280px);
   }
 }
