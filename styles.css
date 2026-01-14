@@ -480,15 +480,22 @@ body {
 
 /* Side Menu - MODERNIZED */
 .side-menu {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  border-right: 1px solid rgba(212,175,55,.2);
+  height: 100%;
 }
 
-.side-menu.open {
-  max-height: 600px;
+@media (max-width: 1023px) {
+  .side-menu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    border-right: none;
+  }
+
+  .side-menu.open {
+    max-height: 600px;
+  }
 }
 
 .menu-content {
@@ -1200,17 +1207,6 @@ color: #94a3b8;
 margin: 0 auto 16px;
 opacity: 0.5;
 }
-/* Responsive */
-@media (min-width: 640px) {
-.main-content {
-max-width: 640px;
-margin: 0 auto;
-}
-}
-@media (min-width: 768px) {
-.links-grid {
-grid-template-columns: repeat(2, 1fr);
-}
 .notifications-panel {
 width: 400px;
 }
@@ -1222,14 +1218,6 @@ padding: 12px;
 }</parameter>
 
 /* Desktop enhancement only */
-@media (min-width: 768px) {
-  .main-content {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding-left: 24px;
-    padding-right: 24px;
-  }
-}
 
 @media (min-width: 1024px) {
   body {
@@ -1244,52 +1232,33 @@ padding: 12px;
 }
 /* DESKTOP LAYOUT */
 @media (min-width: 1024px) {
-
   #app {
     display: grid;
     grid-template-columns: 280px 1fr;
     grid-template-rows: auto 1fr;
-    height: 100vh;
   }
 
   #sideMenu {
     grid-row: 1 / span 2;
     grid-column: 1;
-    position: relative;
-    max-height: none;
     height: 100vh;
   }
 
   #header {
     grid-column: 2;
-    margin-left: 0;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
   }
 
   .main-content {
     grid-column: 2;
-    margin-left: 0;
-    max-width: 100%;
     padding: 32px 48px;
+    max-width: none;
   }
 
   .links-grid {
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-  }
-
-  .install-instructions {
-    max-width: 800px;
-  }
-
-  .request-form-container,
-  #myRequestsContainer,
-  #operationsContainer {
-    max-width: 100%;
   }
 }
+
 
 
 
