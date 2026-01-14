@@ -1220,72 +1220,57 @@ padding: 12px;
 
 /* DESKTOP LAYOUT - 1024px and above */
 @media (min-width: 1024px) {
-  /* Make side menu always visible and fixed */
   .side-menu {
     position: fixed;
     left: 0;
     top: 0;
     width: 280px;
     height: 100vh;
-    max-height: 100vh;
     overflow-y: auto;
-    border-right: 1px solid rgba(212,175,55,.2);
-    border-bottom: none;
     z-index: 1001;
   }
-  
-  .side-menu.open {
-    max-height: 100vh;
-  }
-  
-  /* Hide mobile menu button on desktop */
-  #menuBtn {
-    display: none;
-  }
-  
-  /* Adjust header for desktop */
-  #header {
-    position: sticky;
-    top: 0;
-  }
-  
-  /* Adjust all main content areas for desktop */
-  .main-content {
-    padding: 32px 48px;
-    min-height: calc(100vh - 60px);
-  }
-  
-  /* Make links grid 3 columns on desktop */
-  .links-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-  
-  /* Better spacing for forms on desktop */
-  .request-form-container {
-    max-width: 800px;
-  }
-}
 
-/* Extra large screens */
-@media (min-width: 1440px) {
-  .main-content {
-    max-width: 1400px;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: calc(280px + 48px);
-  }
-  
-  #header {
-    max-width: calc(1400px + 280px);
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-@media (min-width: 1024px) {
+  /* The only place we offset the layout */
   .screen.active {
     margin-left: 280px;
     width: calc(100% - 280px);
+    min-height: 100vh;
+  }
+
+  /* Header and content stay normal */
+  #header {
+    position: sticky;
+    top: 0;
+    margin-left: 0;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 32px 48px;
+  }
+
+  #menuBtn {
+    display: none;
   }
 }
+
+
+/* Extra large screens */
+@media (min-width: 1440px) {
+  .screen.active {
+    max-width: 1400px;
+    margin-left: 280px;
+    margin-right: auto;
+  }
+
+  .main-content {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+
+  #header {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
