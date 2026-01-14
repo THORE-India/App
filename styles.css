@@ -1221,34 +1221,33 @@ padding: 12px;
 
 /* DESKTOP LAYOUT - 1024px and above */
 @media (min-width: 1024px) {
-  .side-menu {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 280px;
-    height: 100vh;
-    z-index: 1001;
+  #app {
+    display: block;
   }
 
   .screen.active {
-    width: calc(100vw - 280px);
+    display: block;
     margin-left: 280px;
+    width: calc(100vw - 280px);
     min-height: 100vh;
   }
 
   #header {
-    position: sticky;
+    position: fixed;
+    left: 280px;
+    right: 0;
     top: 0;
+    height: 60px;
+    z-index: 1000;
   }
 
   .main-content {
-    padding: 32px 48px;
-  }
-
-  #menuBtn {
-    display: none;
+    margin-top: 60px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
   }
 }
+
 
 
 /* Extra large screens */
