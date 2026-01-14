@@ -1260,6 +1260,22 @@ padding: 12px;
   }
 }
 
+/* Desktop safe layout fix */
+@media (min-width: 1024px) {
+  .side-menu {
+    width: 280px;
+  }
+
+  .main-content {
+    margin-left: 280px;
+  }
+
+  #header {
+    margin-left: 280px;
+  }
+}
+
+
 
 
 
