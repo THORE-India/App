@@ -359,12 +359,10 @@
   <!-- ============================================ -->
   <!-- FIREBASE SDK - ADD YOUR CONFIG VALUES BELOW -->
   <!-- ============================================ -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 
-    // ⚠️ REPLACE THESE WITH YOUR FIREBASE PROJECT VALUES
-    // Get these from: Firebase Console → Project Settings → General → Your apps
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY",
       authDomain: "thore-india.firebaseapp.com",
@@ -374,42 +372,63 @@
       appId: "1:104117516859:web:6738cfce20b0f7744afa1e"
     };
 
-    // ⚠️ REPLACE THIS WITH YOUR VAPID KEY
-    // Get this from: Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
-    const VAPID_KEY = "BLDHSLmvQP73Paq5Hcs2F0H6OTpZyWpVjbKkZiEaGaRrm1Fq0cUfupkxL3cy4U3Si722m_wQdqzzv1wFDByVO0U";
+    const VAPID_KEY = "BLDHSLmvQP73Paq5Hcs2F0H6OTpZyWpVjbKkZIEaGaRrm1FqOcUfupkxl3cy4U3Si722m_wQdqzzv1wFDByVO0U";
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const messaging = getMessaging(app);
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
 
-    // Make messaging available globally so script.js can use it
     window.firebaseMessaging = messaging;
     window.firebaseVapidKey = VAPID_KEY;
-    window.firebaseGetToken = getToken;
 
-    // Handle foreground messages (when app is open)
-    onMessage(messaging, function(payload) {
-      console.log('FCM foreground message received:', payload);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./firebase-messaging-sw.js', {
+        scope: './'
+      }).then(function(registration) {
+        console.log('FCM SW registered:', registration.scope);
 
-      const title = payload.notification?.title || 'THORE India Portal';
-      const body = payload.notification?.body || 'You have a new notification';
+        messaging.getToken({
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: registration
+        }).then(function(token) {
+          if (token) {
+            console.log('FCM Token:', token.substring(0, 20) + '...');
+            window.fcmToken = token;
 
-      // Show as browser notification if permission granted
+            var savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+              var user = JSON.parse(savedUser);
+              apiCall('saveFCMToken', {
+                userEmail: user.email,
+                fcmToken: token
+              }).then(function() {
+                console.log('FCM token saved to backend ✅');
+              });
+            }
+          } else {
+            console.log('No FCM token available');
+          }
+        }).catch(function(err) {
+          console.error('FCM getToken error:', err);
+        });
+
+      }).catch(function(err) {
+        console.error('FCM SW registration failed:', err);
+      });
+    }
+
+    messaging.onMessage(function(payload) {
+      console.log('FCM foreground message:', payload);
+      var title = (payload.notification && payload.notification.title) || 'THORE India Portal';
+      var body = (payload.notification && payload.notification.body) || 'New notification';
       if (Notification.permission === 'granted') {
         new Notification(title, {
           body: body,
-          icon: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png',
-          badge: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png'
+          icon: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png'
         });
       }
-
-      // Also refresh the notification badge count
-      if (typeof loadNotifications === 'function') {
-        loadNotifications();
-      }
+      if (typeof loadNotifications === 'function') loadNotifications();
     });
 
-    // Signal that Firebase is ready
     window.firebaseReady = true;
     document.dispatchEvent(new Event('firebaseReady'));
   </script>
