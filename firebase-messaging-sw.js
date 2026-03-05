@@ -10,6 +10,7 @@
 
 // ⚠️ REPLACE THESE 2 VALUES with your Firebase project values
 // Get from: Firebase Console → Project Settings → General → Your apps
+
 const FIREBASE_MESSAGING_SENDER_ID = "104117516859";
 const FIREBASE_APP_ID = "1:104117516859:web:6738cfce20b0f7744afa1e";
 const FIREBASE_API_KEY = "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY";
