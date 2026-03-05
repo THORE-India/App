@@ -9,12 +9,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 
 // ⚠️ REPLACE WITH YOUR FIREBASE VALUES (same as index.html)
 firebase.initializeApp({
-  apiKey: "AIzaSyA22MjCM-enbN-haF1s2dhX22Ek9KXWQjI",
+  apiKey: "AIzaSyBulJJEZhgiCM0lsmwtH58VQwbzOkRC7Co",
   authDomain: "thore-india.firebaseapp.com",
   projectId: "thore-india",
   storageBucket: "thore-india.firebasestorage.app",
   messagingSenderId: "104117516859",
-  appId: "1:104117516859:web:6738cfce20b0f7744afa1e"
+  appId: "1:104117516859:web:75b9174f691635174afa1e"
 });
 
 var messaging = firebase.messaging();
