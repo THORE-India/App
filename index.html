@@ -364,7 +364,7 @@
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyAdKhLRkYF8f7OSQ0PHG3HsOcKiDTmSicA",
+      apiKey: "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY",
       authDomain: "thore-india.firebaseapp.com",
       projectId: "thore-india",
       storageBucket: "thore-india.firebasestorage.app",
@@ -374,48 +374,43 @@
 
     const VAPID_KEY = "BLDHSLmvQP73Paq5Hcs2F0H6OTpZyWpVjbKkZIEaGaRrm1FqOcUfupkxl3cy4U3Si722m_wQdqzzv1wFDByVO0U";
 
-    firebase.initializeApp(firebaseConfig);
+     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
     window.firebaseMessaging = messaging;
     window.firebaseVapidKey = VAPID_KEY;
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./firebase-messaging-sw.js', {
-        scope: './'
-      }).then(function(registration) {
-        console.log('FCM SW registered:', registration.scope);
+    // ✅ Use the EXISTING service-worker.js registration (no separate FCM SW needed)
+    // service-worker.js now has Firebase merged into it
+    navigator.serviceWorker.ready.then(function(registration) {
+      console.log('Using SW for FCM:', registration.active.scriptURL);
 
-        messaging.getToken({
-          vapidKey: VAPID_KEY,
-          serviceWorkerRegistration: registration
-        }).then(function(token) {
-          if (token) {
-            console.log('FCM Token:', token.substring(0, 20) + '...');
-            window.fcmToken = token;
-
-            var savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
-              var user = JSON.parse(savedUser);
-              apiCall('saveFCMToken', {
-                userEmail: user.email,
-                fcmToken: token
-              }).then(function() {
-                console.log('FCM token saved to backend ✅');
-              });
-            }
-          } else {
-            console.log('No FCM token available');
-          }
-        }).catch(function(err) {
-          console.error('FCM getToken error:', err);
-        });
-
-      }).catch(function(err) {
-        console.error('FCM SW registration failed:', err);
+      return messaging.getToken({
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: registration
       });
-    }
 
+    }).then(function(token) {
+      if (token) {
+        console.log('FCM Token obtained:', token.substring(0, 20) + '...');
+        window.fcmToken = token;
+
+        var savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          var user = JSON.parse(savedUser);
+          apiCall('saveFCMToken', {
+            userEmail: user.email,
+            fcmToken: token
+          }).then(function() {
+            console.log('FCM token saved to backend ✅');
+          });
+        }
+      }
+    }).catch(function(err) {
+      console.error('FCM getToken error:', err.message);
+    });
+
+    // Handle foreground messages
     messaging.onMessage(function(payload) {
       console.log('FCM foreground message:', payload);
       var title = (payload.notification && payload.notification.title) || 'THORE India Portal';
