@@ -2,24 +2,22 @@
 // CONFIGURATION - UPDATE THIS WITH YOUR APPS SCRIPT URL
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw2XDf03HVFPIILNHNZe_RJe4drUhHndLf-5zZS69E56s9ks-_mpYJ849_I0mccjoByhA/exec';
-// Example: 'https://script.google.com/macros/s/AKfycbxxx.../exec'
 
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
 let currentUser = null;
 let deferredPrompt;
-let notificationCheckInterval;
+// NOTE: notificationCheckInterval removed — FCM handles push now
+// We keep a light fallback interval only for badge count sync
+let notificationSyncInterval;
 
 // ============================================
 // API CALL FUNCTION (GAS SAFE – NO CORS)
 // ============================================
 async function apiCall(action, params = {}) {
   try {
-    const payload = {
-      action: action,
-      ...params
-    };
+    const payload = { action, ...params };
 
     const body = Object.keys(payload)
       .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(payload[key]))
@@ -27,51 +25,34 @@ async function apiCall(action, params = {}) {
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body
     });
 
-    const data = await response.json();
-    return data;
-
+    return await response.json();
   } catch (error) {
     console.error('API call failed:', error);
     throw error;
   }
 }
 
-
 // ============================================
 // INITIALIZATION
 // ============================================
 window.addEventListener('load', function() {
-  // Show welcome screen for 2 seconds
   setTimeout(function() {
     checkAuth();
   }, 2000);
-  
-  // PWA Install listener
+
   window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     deferredPrompt = e;
   });
 
-  // Register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js')
-      .then(registration => console.log('Service Worker registered'))
+      .then(registration => console.log('Service Worker registered:', registration.scope))
       .catch(error => console.log('Service Worker registration failed:', error));
-  }
-
-  // Request notification permission
-  if ("Notification" in window) {
-    Notification.requestPermission().then(function(permission) {
-      if(permission === "granted"){
-        console.log("User allowed notifications");
-      }
-    });
   }
 });
 
@@ -80,7 +61,6 @@ window.addEventListener('load', function() {
 // ============================================
 function checkAuth() {
   const savedUser = localStorage.getItem('currentUser');
-  
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
     checkForAnnouncement();
@@ -97,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
       handleLogin();
     });
   }
-  
+
   const dataRequestForm = document.getElementById('dataRequestForm');
   if (dataRequestForm) {
     dataRequestForm.addEventListener('submit', function(e) {
@@ -114,24 +94,27 @@ async function handleLogin() {
   const loginBtn = document.getElementById('loginBtn');
   const loginBtnText = document.getElementById('loginBtnText');
   const loginBtnLoader = document.getElementById('loginBtnLoader');
-  
+
   errorDiv.classList.remove('show');
   errorDiv.textContent = '';
-  
   loginBtn.disabled = true;
   loginBtnText.style.display = 'none';
   loginBtnLoader.style.display = 'inline-flex';
-  
+
   try {
     const result = await apiCall('validateLogin', { email, password });
-    
+
     loginBtn.disabled = false;
     loginBtnText.style.display = 'inline';
     loginBtnLoader.style.display = 'none';
-    
+
     if (result.success) {
       currentUser = result.user;
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+      // ✅ FCM: Register device for push notifications after successful login
+      registerFCMToken(currentUser.email);
+
       checkForAnnouncement();
     } else {
       errorDiv.textContent = result.message;
@@ -144,6 +127,54 @@ async function handleLogin() {
     errorDiv.textContent = 'Login failed. Please check your connection and try again.';
     errorDiv.classList.add('show');
     console.error(error);
+  }
+}
+
+// ============================================
+// FCM TOKEN REGISTRATION
+// This runs after login and saves device token to backend
+// so GAS can send push to this specific device later
+// ============================================
+async function registerFCMToken(userEmail) {
+  try {
+    // Request notification permission from user
+    const permission = await Notification.requestPermission();
+
+    if (permission !== 'granted') {
+      console.log('Notification permission denied by user');
+      return;
+    }
+
+    // Wait for Firebase to be ready (it loads as a module after script.js)
+    if (!window.firebaseReady) {
+      document.addEventListener('firebaseReady', function() {
+        registerFCMToken(userEmail);
+      });
+      return;
+    }
+
+    // Get the FCM device token
+    const token = await window.firebaseGetToken(window.firebaseMessaging, {
+      vapidKey: window.firebaseVapidKey,
+      serviceWorkerRegistration: await navigator.serviceWorker.getRegistration()
+    });
+
+    if (token) {
+      console.log('FCM Token obtained:', token.substring(0, 20) + '...');
+
+      // Save token to Google Sheet via GAS so backend can push to this device
+      await apiCall('saveFCMToken', {
+        userEmail: userEmail,
+        fcmToken: token
+      });
+
+      console.log('FCM token saved to backend successfully');
+    } else {
+      console.log('No FCM token available');
+    }
+  } catch (error) {
+    // Non-fatal — app still works, just without push notifications
+    console.error('FCM token registration failed:', error);
   }
 }
 
@@ -163,7 +194,6 @@ function showScreen(screenId) {
 async function checkForAnnouncement() {
   try {
     const announcement = await apiCall('getActiveAnnouncement');
-    
     if (announcement && !sessionStorage.getItem('announcementShown')) {
       showAnnouncement(announcement);
     } else {
@@ -178,15 +208,12 @@ async function checkForAnnouncement() {
 function showAnnouncement(announcement) {
   const content = document.getElementById('announcementContent');
   let html = '';
-  
   if (announcement.imageUrl) {
     html += '<img src="' + escapeHtml(announcement.imageUrl) + '" alt="Announcement">';
   }
-  
   if (announcement.message) {
     html += '<p>' + escapeHtml(announcement.message) + '</p>';
   }
-  
   content.innerHTML = html;
   showScreen('announcementScreen');
 }
@@ -200,7 +227,6 @@ async function showAnnouncements() {
   toggleMenu();
   try {
     const announcement = await apiCall('getActiveAnnouncement');
-    
     if (announcement) {
       sessionStorage.removeItem('announcementShown');
       showAnnouncement(announcement);
@@ -221,19 +247,22 @@ function showMainApp() {
   showScreen('mainScreen');
   loadLinks();
   checkIfOperationsTeam();
-  startNotificationPolling();
+
+  // ✅ CHANGED: Light sync every 5 minutes just to update badge count
+  // Heavy lifting (actual push delivery) is now done by FCM
+  // This is just a fallback sync — NOT the main notification mechanism
+  loadNotifications();
+  notificationSyncInterval = setInterval(loadNotifications, 5 * 60 * 1000); // every 5 min
 
   const searchInput = document.getElementById('globalSearch');
   searchInput.value = '';
-  
   searchInput.oninput = e => {
     const q = e.target.value.toLowerCase();
     document.querySelectorAll('.link-card').forEach(card => {
-      card.style.display = card.innerText.toLowerCase().includes(q)
-        ? 'flex'
-        : 'none';
+      card.style.display = card.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
     });
   };
+
   if (!window.matchMedia('(display-mode: standalone)').matches) {
     setTimeout(function() {
       document.getElementById('installPrompt').classList.add('show');
@@ -246,7 +275,6 @@ function updateUserInfo() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userEmail').textContent = currentUser.email;
     document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
-    
     document.getElementById('reqUserName').textContent = currentUser.name;
     document.getElementById('reqUserRole').textContent = currentUser.role;
     updateDateTime();
@@ -255,13 +283,7 @@ function updateUserInfo() {
 
 function updateDateTime() {
   const now = new Date();
-  const options = { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric', 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  };
+  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
   document.getElementById('reqDateTime').textContent = now.toLocaleString('en-IN', options);
 }
 
@@ -271,17 +293,13 @@ function togglePin(url) {
   localStorage.setItem('pinnedLinks', JSON.stringify(pins));
 }
 
-
-
 // ============================================
 // OPERATIONS TEAM CHECK
 // ============================================
 async function checkIfOperationsTeam() {
   if (!currentUser) return;
-  
   try {
     const result = await apiCall('isOperationsTeam', { userEmail: currentUser.email });
-    
     if (result.isOperationsTeam) {
       document.getElementById('opsMenuBtn').style.display = 'block';
     }
@@ -295,10 +313,9 @@ async function checkIfOperationsTeam() {
 // ============================================
 async function loadLinks() {
   if (!currentUser) return;
-  
   document.getElementById('loadingSpinner').classList.remove('hide');
   document.getElementById('linksContainer').innerHTML = '';
-  
+
   try {
     const links = await apiCall('getLinksForUser', { userEmail: currentUser.email });
     displayLinks(links);
@@ -310,17 +327,17 @@ async function loadLinks() {
 function displayLinks(links) {
   document.getElementById('loadingSpinner').classList.add('hide');
   const container = document.getElementById('linksContainer');
-  
+
   if (links.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;">No links available for you</div>';
     return;
   }
-  
+
   links.forEach(function(link) {
     const card = document.createElement('div');
     card.className = 'link-card';
     card.setAttribute('data-url', link.url);
-    
+
     card.innerHTML = `
       <div class="link-info">
         <div class="link-title">${escapeHtml(link.title)}</div>
@@ -332,18 +349,18 @@ function displayLinks(links) {
         </svg>
       </div>
     `;
-    
+
     card.addEventListener('click', function() {
       openLink(this.getAttribute('data-url'));
     });
-    
+
     container.appendChild(card);
   });
 }
 
 function showError(error) {
   document.getElementById('loadingSpinner').classList.add('hide');
-  document.getElementById('linksContainer').innerHTML = 
+  document.getElementById('linksContainer').innerHTML =
     '<div style="text-align:center;padding:40px;color:#ef4444;">Error loading links. Please refresh.</div>';
   console.error(error);
 }
@@ -365,7 +382,6 @@ function trackRecent(url) {
   localStorage.setItem('recentLinks', JSON.stringify(recent));
 }
 
-
 // ============================================
 // VIEW NAVIGATION
 // ============================================
@@ -382,12 +398,10 @@ function showDataRequestPortal() {
   document.getElementById('dataRequestView').style.display = 'block';
   document.getElementById('myRequestsView').style.display = 'none';
   document.getElementById('operationsView').style.display = 'none';
-  
   updateDateTime();
   document.getElementById('remarks').value = '';
   document.getElementById('requestError').classList.remove('show');
   document.getElementById('requestSuccess').classList.remove('show');
-  
   toggleMenu();
 }
 
@@ -396,7 +410,6 @@ function showMyRequests() {
   document.getElementById('dataRequestView').style.display = 'none';
   document.getElementById('myRequestsView').style.display = 'block';
   document.getElementById('operationsView').style.display = 'none';
-  
   toggleMenu();
   setTimeout(loadMyRequests, 50);
 }
@@ -406,7 +419,6 @@ function showOperationsPanel() {
   document.getElementById('dataRequestView').style.display = 'none';
   document.getElementById('myRequestsView').style.display = 'none';
   document.getElementById('operationsView').style.display = 'block';
-  
   loadOperationsPanel();
   toggleMenu();
 }
@@ -421,20 +433,19 @@ async function handleDataRequestSubmit() {
   const submitBtn = document.getElementById('submitRequestBtn');
   const submitBtnText = document.getElementById('submitBtnText');
   const submitBtnLoader = document.getElementById('submitBtnLoader');
-  
+
   if (!remarks) {
     errorDiv.textContent = 'Please enter request details';
     errorDiv.classList.add('show');
     return;
   }
-  
+
   errorDiv.classList.remove('show');
   successDiv.classList.remove('show');
-  
   submitBtn.disabled = true;
   submitBtnText.style.display = 'none';
   submitBtnLoader.style.display = 'inline-flex';
-  
+
   try {
     const result = await apiCall('submitDataRequest', {
       userEmail: currentUser.email,
@@ -442,11 +453,11 @@ async function handleDataRequestSubmit() {
       userRole: currentUser.role,
       remarks: remarks
     });
-    
+
     submitBtn.disabled = false;
     submitBtnText.style.display = 'inline';
     submitBtnLoader.style.display = 'none';
-    
+
     if (result.success) {
       successDiv.innerHTML = `
         <strong>✓ Request Submitted Successfully!</strong><br>
@@ -455,12 +466,8 @@ async function handleDataRequestSubmit() {
       `;
       successDiv.classList.add('show');
       document.getElementById('remarks').value = '';
-      
       document.getElementById('estimatedTime').textContent = result.estimatedTime;
-      
-      setTimeout(function() {
-        successDiv.classList.remove('show');
-      }, 5000);
+      setTimeout(function() { successDiv.classList.remove('show'); }, 5000);
     } else {
       errorDiv.textContent = result.message;
       errorDiv.classList.add('show');
@@ -480,18 +487,17 @@ async function handleDataRequestSubmit() {
 // ============================================
 async function loadMyRequests() {
   if (!currentUser) return;
-  
+
   document.getElementById('myRequestsLoading').classList.remove('hide');
-  document.getElementById('myRequestsContainer').classList.remove('hide');
   document.getElementById('myRequestsContainer').innerHTML = '';
-  
+
   try {
     const requests = await apiCall('getUserRequests', { userEmail: currentUser.email });
     document.getElementById('myRequestsLoading').classList.add('hide');
     displayMyRequests(requests);
   } catch (error) {
     document.getElementById('myRequestsLoading').classList.add('hide');
-    document.getElementById('myRequestsContainer').innerHTML = 
+    document.getElementById('myRequestsContainer').innerHTML =
       '<div class="empty-state">Error loading requests. Please try again.</div>';
     console.error(error);
   }
@@ -499,7 +505,7 @@ async function loadMyRequests() {
 
 function displayMyRequests(requests) {
   const container = document.getElementById('myRequestsContainer');
-  
+
   if (requests.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
@@ -511,17 +517,17 @@ function displayMyRequests(requests) {
     `;
     return;
   }
-  
+
   container.innerHTML = '';
-  
+
   requests.forEach(function(req) {
     const card = document.createElement('div');
     card.className = 'request-card';
-    
+
     let statusClass = 'status-pending';
     if (req.status === 'Completed') statusClass = 'status-completed';
     if (req.status === 'Rejected') statusClass = 'status-rejected';
-    
+
     let detailsHtml = `
       <div class="request-card-header">
         <span class="request-id">${escapeHtml(req.requestId)}</span>
@@ -536,7 +542,7 @@ function displayMyRequests(requests) {
         <span>${escapeHtml(req.estimatedTime)}</span>
       </div>
     `;
-    
+
     if (req.status === 'Completed' && req.actualCompleteTime) {
       detailsHtml += `
         <div class="request-detail">
@@ -549,7 +555,7 @@ function displayMyRequests(requests) {
         </div>
       `;
     }
-    
+
     if (req.status === 'Rejected' && req.rejectReason) {
       detailsHtml += `
         <div class="request-detail">
@@ -558,14 +564,14 @@ function displayMyRequests(requests) {
         </div>
       `;
     }
-    
+
     detailsHtml += `
       <div class="request-remarks">
         <strong>Details:</strong><br>
         ${escapeHtml(req.remarks)}
       </div>
     `;
-    
+
     card.innerHTML = detailsHtml;
     container.appendChild(card);
   });
@@ -577,17 +583,17 @@ function displayMyRequests(requests) {
 async function loadOperationsPanel() {
   document.getElementById('operationsLoading').classList.remove('hide');
   document.getElementById('operationsContainer').innerHTML = '';
-  
+
   try {
     const stats = await apiCall('getOperationsStats');
     displayOperationsStats(stats);
-    
+
     const requests = await apiCall('getAllPendingRequests');
     document.getElementById('operationsLoading').classList.add('hide');
     displayOperationsRequests(requests);
   } catch (error) {
     document.getElementById('operationsLoading').classList.add('hide');
-    document.getElementById('operationsContainer').innerHTML = 
+    document.getElementById('operationsContainer').innerHTML =
       '<div class="empty-state">Error loading requests. Please try again.</div>';
     console.error(error);
   }
@@ -596,7 +602,6 @@ async function loadOperationsPanel() {
 function displayOperationsStats(stats) {
   const container = document.getElementById('operationsStatsContainer');
   let html = '';
-  
   for (var member in stats) {
     html += `
       <div class="stat-card">
@@ -605,13 +610,12 @@ function displayOperationsStats(stats) {
       </div>
     `;
   }
-  
   container.innerHTML = html;
 }
 
 function displayOperationsRequests(requests) {
   const container = document.getElementById('operationsContainer');
-  
+
   if (requests.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
@@ -623,13 +627,13 @@ function displayOperationsRequests(requests) {
     `;
     return;
   }
-  
+
   container.innerHTML = '';
-  
+
   requests.forEach(function(req) {
     const card = document.createElement('div');
     card.className = 'request-card';
-    
+
     card.innerHTML = `
       <div class="request-card-header">
         <span class="request-id">${escapeHtml(req.requestId)}</span>
@@ -667,22 +671,20 @@ function displayOperationsRequests(requests) {
         </button>
       </div>
     `;
-    
+
     container.appendChild(card);
   });
 }
 
 async function completeRequest(requestId) {
   if (!confirm('Mark this request as completed?')) return;
-  
   try {
     const result = await apiCall('updateRequestStatus', {
-      requestId: requestId,
+      requestId,
       status: 'Completed',
       handledBy: currentUser.name,
       rejectReason: ''
     });
-    
     if (result.success) {
       alert('Request marked as completed!');
       loadOperationsPanel();
@@ -698,15 +700,13 @@ async function completeRequest(requestId) {
 async function updateTimeline(requestId) {
   var reason = prompt('Enter reason for delay or updated timeline:');
   if (!reason) return;
-  
   try {
     const result = await apiCall('updateRequestStatus', {
-      requestId: requestId,
+      requestId,
       status: 'Pending',
       handledBy: currentUser.name,
       rejectReason: reason
     });
-    
     if (result.success) {
       alert('Timeline updated!');
       loadOperationsPanel();
@@ -722,17 +722,14 @@ async function updateTimeline(requestId) {
 async function rejectRequest(requestId) {
   var reason = prompt('Enter reason for rejection:');
   if (!reason) return;
-  
   if (!confirm('Reject this request? User will need management approval to resubmit.')) return;
-  
   try {
     const result = await apiCall('updateRequestStatus', {
-      requestId: requestId,
+      requestId,
       status: 'Rejected',
       handledBy: currentUser.name,
       rejectReason: reason
     });
-    
     if (result.success) {
       alert('Request rejected!');
       loadOperationsPanel();
@@ -747,31 +744,16 @@ async function rejectRequest(requestId) {
 
 // ============================================
 // NOTIFICATIONS
+// ✅ CHANGED: This now only syncs the badge count
+// Actual push delivery is handled by FCM + service-worker
 // ============================================
-function startNotificationPolling() {
-  loadNotifications();
-  notificationCheckInterval = setInterval(loadNotifications, 30000);
-}
-
 async function loadNotifications() {
   if (!currentUser) return;
-  
   try {
     const notifications = await apiCall('getUnreadNotifications', { userEmail: currentUser.email });
     updateNotificationBadge(notifications.length);
-    
-    if (notifications.length > 0 && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        payload: {
-          title: 'THORE India Portal',
-          body: `You have ${notifications.length} new notification(s)`,
-          count: notifications.length
-        }
-      });
-    }
   } catch (error) {
-    console.error('Error loading notifications:', error);
+    console.error('Error syncing notification badge:', error);
   }
 }
 
@@ -788,7 +770,7 @@ function updateNotificationBadge(count) {
 async function showNotifications() {
   const panel = document.getElementById('notificationsPanel');
   panel.classList.add('open');
-  
+
   const container = document.getElementById('notificationsContent');
   container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
 
@@ -809,33 +791,31 @@ function closeNotifications() {
 
 function displayNotifications(notifications) {
   const container = document.getElementById('notificationsContent');
-  
+
   if (notifications.length === 0) {
     container.innerHTML = '<div class="no-notifications">No new notifications</div>';
     return;
   }
-  
+
   container.innerHTML = '';
-  
+
   notifications.forEach(function(notif) {
     const item = document.createElement('div');
     item.className = 'notification-item unread';
-    item.onclick = function() {
-      markAsRead(notif.notifId);
-    };
-    
+    item.onclick = function() { markAsRead(notif.notifId); };
+
     item.innerHTML = `
       <div class="notification-message">${escapeHtml(notif.message)}</div>
       <div class="notification-time">${escapeHtml(notif.createdAt)}</div>
     `;
-    
+
     container.appendChild(item);
   });
 }
 
 async function markAsRead(notifId) {
   try {
-    await apiCall('markNotificationAsRead', { notifId: notifId });
+    await apiCall('markNotificationAsRead', { notifId });
     loadNotifications();
     showNotifications();
   } catch (error) {
@@ -850,9 +830,7 @@ function toggleMenu() {
   const menu = document.getElementById('sideMenu');
   const menuIcon = document.getElementById('menuIcon');
   const closeIcon = document.getElementById('closeIcon');
-  
   menu.classList.toggle('open');
-  
   if (menu.classList.contains('open')) {
     menuIcon.style.display = 'none';
     closeIcon.style.display = 'block';
@@ -877,9 +855,7 @@ function logout() {
     localStorage.removeItem('currentUser');
     sessionStorage.clear();
     currentUser = null;
-    if (notificationCheckInterval) {
-      clearInterval(notificationCheckInterval);
-    }
+    if (notificationSyncInterval) clearInterval(notificationSyncInterval);
     showScreen('loginScreen');
     toggleMenu();
   }
@@ -892,9 +868,7 @@ function installApp() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
     deferredPrompt.userChoice.then(function(choiceResult) {
-      if (choiceResult.outcome === 'accepted') {
-        dismissInstall();
-      }
+      if (choiceResult.outcome === 'accepted') dismissInstall();
       deferredPrompt = null;
     });
   } else {
@@ -916,27 +890,14 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-window.addEventListener('offline', () => {
-  showScreen('offlineScreen');
-});
-
-window.addEventListener('online', () => {
-  location.reload();
-});
+window.addEventListener('offline', () => { showScreen('offlineScreen'); });
+window.addEventListener('online', () => { location.reload(); });
 
 let startY = 0;
-
 document.addEventListener('touchstart', e => {
-  if (window.scrollY === 0) {
-    startY = e.touches[0].clientY;
-  }
+  if (window.scrollY === 0) startY = e.touches[0].clientY;
 });
-
 document.addEventListener('touchend', e => {
   const endY = e.changedTouches[0].clientY;
-  if (window.scrollY === 0 && endY - startY > 140) {
-    loadLinks();
-  }
+  if (window.scrollY === 0 && endY - startY > 140) loadLinks();
 });
-
-
