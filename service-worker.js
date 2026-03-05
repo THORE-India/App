@@ -9,7 +9,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 
 // ⚠️ REPLACE WITH YOUR FIREBASE VALUES (same as index.html)
 firebase.initializeApp({
-  apiKey: "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY",
+  apiKey: "AIzaSyA22MjCM-enbN-haF1s2dhX22Ek9KXWQjI",
   authDomain: "thore-india.firebaseapp.com",
   projectId: "thore-india",
   storageBucket: "thore-india.firebasestorage.app",
