@@ -226,7 +226,6 @@
           class="search-input"
         />
 
-
         <div id="linksContainer" class="links-grid"></div>
 
         <div class="install-instructions">
@@ -351,11 +350,69 @@
   </div>
   
   <div id="offlineScreen" class="screen">
-  <h2>You're offline</h2>
-  <p>Some features may not be available</p>
-</div>
-
+    <h2>You're offline</h2>
+    <p>Some features may not be available</p>
+  </div>
 
   <script src="script.js"></script>
+
+  <!-- ============================================ -->
+  <!-- FIREBASE SDK - ADD YOUR CONFIG VALUES BELOW -->
+  <!-- ============================================ -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+
+    // ⚠️ REPLACE THESE WITH YOUR FIREBASE PROJECT VALUES
+    // Get these from: Firebase Console → Project Settings → General → Your apps
+    const firebaseConfig = {
+      apiKey: "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY",
+      authDomain: "thore-india.firebaseapp.com",
+      projectId: "thore-india",
+      storageBucket: "thore-india.firebasestorage.app",
+      messagingSenderId: "104117516859",
+      appId: "1:104117516859:web:6738cfce20b0f7744afa1e"
+    };
+
+    // ⚠️ REPLACE THIS WITH YOUR VAPID KEY
+    // Get this from: Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
+    const VAPID_KEY = "BLDHSLmvQP73Paq5Hcs2F0H6OTpZyWpVjbKkZiEaGaRrm1Fq0cUfupkxL3cy4U3Si722m_wQdqzzv1wFDByVO0U";
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+
+    // Make messaging available globally so script.js can use it
+    window.firebaseMessaging = messaging;
+    window.firebaseVapidKey = VAPID_KEY;
+    window.firebaseGetToken = getToken;
+
+    // Handle foreground messages (when app is open)
+    onMessage(messaging, function(payload) {
+      console.log('FCM foreground message received:', payload);
+
+      const title = payload.notification?.title || 'THORE India Portal';
+      const body = payload.notification?.body || 'You have a new notification';
+
+      // Show as browser notification if permission granted
+      if (Notification.permission === 'granted') {
+        new Notification(title, {
+          body: body,
+          icon: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png',
+          badge: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png'
+        });
+      }
+
+      // Also refresh the notification badge count
+      if (typeof loadNotifications === 'function') {
+        loadNotifications();
+      }
+    });
+
+    // Signal that Firebase is ready
+    window.firebaseReady = true;
+    document.dispatchEvent(new Event('firebaseReady'));
+  </script>
+
 </body>
 </html>
