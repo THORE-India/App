@@ -154,10 +154,11 @@ async function registerFCMToken(userEmail) {
     }
 
     // Get the FCM device token
-    const token = await window.firebaseGetToken(window.firebaseMessaging, {
-      vapidKey: window.firebaseVapidKey,
-      serviceWorkerRegistration: await navigator.serviceWorker.getRegistration()
-    });
+    if (typeof window.firebaseRequestToken !== 'function') {
+      throw new Error('Firebase token helper is not initialized yet.');
+    }
+
+    const token = await window.firebaseRequestToken();
 
     if (token) {
       console.log('FCM Token obtained:', token.substring(0, 20) + '...');
@@ -174,6 +175,9 @@ async function registerFCMToken(userEmail) {
     }
   } catch (error) {
     // Non-fatal — app still works, just without push notifications
+    if (String(error && error.message).includes('messaging/token-subscribe-failed')) {
+      console.error('FCM token registration failed: token-subscribe-failed. Check Firebase Web API key restrictions and enable the "Firebase Cloud Messaging API" in Google Cloud Console.');
+    }
     console.error('FCM token registration failed:', error);
   }
 }
