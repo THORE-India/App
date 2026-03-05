@@ -13,7 +13,7 @@
 
 const FIREBASE_MESSAGING_SENDER_ID = "104117516859";
 const FIREBASE_APP_ID = "1:104117516859:web:6738cfce20b0f7744afa1e";
-const FIREBASE_API_KEY = "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY";
+const FIREBASE_API_KEY = "AIzaSyAdKhLRkYF8f7OSQ0PHG3HsOcKiDTmSicA";
 const FIREBASE_PROJECT_ID = "thore-india";
 
 // Import Firebase scripts (required for background handling)
@@ -22,7 +22,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 
 // Initialize Firebase in the service worker
 firebase.initializeApp({
-  apiKey: "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY",
+  apiKey: "AIzaSyAdKhLRkYF8f7OSQ0PHG3HsOcKiDTmSicA",
   authDomain: "thore-india.firebaseapp.com",
   projectId: "thore-india",
   storageBucket: "thore-india.firebasestorage.app",
