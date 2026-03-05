@@ -380,35 +380,17 @@
     window.firebaseMessaging = messaging;
     window.firebaseVapidKey = VAPID_KEY;
 
-    // ✅ Use the EXISTING service-worker.js registration (no separate FCM SW needed)
-    // service-worker.js now has Firebase merged into it
-    navigator.serviceWorker.ready.then(function(registration) {
-      console.log('Using SW for FCM:', registration.active.scriptURL);
+    // Requesting token is intentionally deferred until after user login.
+    // This avoids noisy startup errors and keeps permission prompts contextual.
+    window.firebaseRequestToken = async function firebaseRequestToken() {
+      const registration = await navigator.serviceWorker.ready;
+      console.log('Using SW for FCM:', registration.active && registration.active.scriptURL);
 
       return messaging.getToken({
         vapidKey: VAPID_KEY,
         serviceWorkerRegistration: registration
       });
-
-    }).then(function(token) {
-      if (token) {
-        console.log('FCM Token obtained:', token.substring(0, 20) + '...');
-        window.fcmToken = token;
-
-        var savedUser = localStorage.getItem('currentUser');
-        if (savedUser) {
-          var user = JSON.parse(savedUser);
-          apiCall('saveFCMToken', {
-            userEmail: user.email,
-            fcmToken: token
-          }).then(function() {
-            console.log('FCM token saved to backend ✅');
-          });
-        }
-      }
-    }).catch(function(err) {
-      console.error('FCM getToken error:', err.message);
-    });
+      };
 
     // Handle foreground messages
     messaging.onMessage(function(payload) {
