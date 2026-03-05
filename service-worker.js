@@ -1,16 +1,16 @@
 // =====================================
-// THORE INDIA – PWA SERVICE WORKER v2
-// Notifications + Offline Safe
+// THORE INDIA – PWA SERVICE WORKER v3
+// FCM Push + Offline Safe
 // =====================================
 
-const CACHE_NAME = 'thore-static-v2';
+const CACHE_NAME = 'thore-static-v3';
 
-// Cache ONLY same-origin static assets
 const STATIC_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './script.js',
+  './firebase-messaging-sw.js'   // ✅ NEW: cache the FCM service worker too
 ];
 
 // -----------------------------
@@ -18,13 +18,11 @@ const STATIC_ASSETS = [
 // -----------------------------
 self.addEventListener('install', event => {
   self.skipWaiting();
-
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('[SW] Caching static assets');
+      return cache.addAll(STATIC_ASSETS);
+    })
   );
 });
 
@@ -44,7 +42,6 @@ self.addEventListener('activate', event => {
       )
     )
   );
-
   self.clients.claim();
 });
 
@@ -52,7 +49,6 @@ self.addEventListener('activate', event => {
 // FETCH (SAFE MODE)
 // -----------------------------
 self.addEventListener('fetch', event => {
-  // Only cache same-origin GET requests
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
@@ -77,26 +73,24 @@ self.addEventListener('fetch', event => {
 });
 
 // =================================================
-// 🔔 NOTIFICATIONS (ANDROID / SYSTEM LEVEL)
+// 🔔 LEGACY NOTIFICATION SUPPORT
+// (Kept for any direct postMessage calls from old code)
+// FCM push is now handled in firebase-messaging-sw.js
 // =================================================
-
-// Receive messages FROM main app
 self.addEventListener('message', event => {
   if (!event.data) return;
 
   if (event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, body, count } = event.data.payload;
+    const { title, body } = event.data.payload;
 
     self.registration.showNotification(title || 'THORE India Portal', {
       body: body || 'You have a new notification',
-      icon: './android-icon-192x192.png',
-      badge: './android-icon-192x192.png',
-      tag: 'thore-notification', // prevents spam
+      icon: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png',
+      badge: 'https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png',
+      tag: 'thore-notification',
       renotify: true,
       vibrate: [100, 50, 100],
-      data: {
-        url: './'
-      }
+      data: { url: './' }
     });
   }
 });
@@ -104,16 +98,14 @@ self.addEventListener('message', event => {
 // Handle notification click
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(clientList => {
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin)) {
-            return client.focus();
-          }
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin)) {
+          return client.focus();
         }
-        return self.clients.openWindow('./');
-      })
+      }
+      return self.clients.openWindow('./');
+    })
   );
 });
