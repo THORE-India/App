@@ -22,10 +22,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 
 // Initialize Firebase in the service worker
 firebase.initializeApp({
-  apiKey: AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY
-  projectId: thore-india
-  messagingSenderId: 104117516859,
-  appId: 1:104117516859:web:6738cfce20b0f7744afa1e
+  apiKey: "AIzaSyAbdKfydbH8uLLloDxmhqBPswJz_dH4UlY",
+  authDomain: "thore-india.firebaseapp.com",
+  projectId: "thore-india",
+  storageBucket: "thore-india.firebasestorage.app",
+  messagingSenderId: "104117516859",
+  appId: "1:104117516859:web:6738cfce20b0f7744afa1e"
 });
 
 // Get messaging instance
