@@ -4,10 +4,11 @@
   "description": "Secure company resource access with data request management",
   "start_url": "/App/",
   "display": "standalone",
-  "background_color": "#00000000",
+  "background_color": "#1e293b",
   "theme_color": "#d4af37",
   "orientation": "portrait-primary",
   "scope": "/App/",
+  "gcm_sender_id": "104117516859",
   "icons": [
     {
       "src": "https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png",
@@ -19,16 +20,9 @@
       "src": "https://i.postimg.cc/VLXmBdMf/THORE-Favicon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://i.postimg.cc/HW6BvgGS/android-icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
   "categories": ["business", "productivity"],
   "lang": "en"
 }
