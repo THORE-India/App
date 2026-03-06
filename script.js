@@ -54,7 +54,19 @@ window.addEventListener('load', function() {
       .then(registration => console.log('Service Worker registered:', registration.scope))
       .catch(error => console.log('Service Worker registration failed:', error));
   }
+
+  // Handle FCM token refresh triggered by service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'FCM_TOKEN_REFRESH' && currentUser) {
+        console.log('Re-registering FCM token after subscription change...');
+        registerFCMToken(currentUser.email);
+      }
+    });
+  }
+
 });
+
 
 // ============================================
 // AUTHENTICATION
