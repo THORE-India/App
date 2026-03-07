@@ -1,235 +1,154 @@
 // ============================================
-// CONFIGURATION - UPDATE THIS WITH YOUR APPS SCRIPT URL
+// THORE INDIA PORTAL — script.js v2.0
 // ============================================
+
 const API_URL = 'https://script.google.com/macros/s/AKfycbw2XDf03HVFPIILNHNZe_RJe4drUhHndLf-5zZS69E56s9ks-_mpYJ849_I0mccjoByhA/exec';
 
-// ============================================
-// GLOBAL VARIABLES
-// ============================================
+// ── GLOBALS ──────────────────────────────────────────────────────────────────
 let currentUser = null;
 let deferredPrompt;
-// NOTE: notificationCheckInterval removed — FCM handles push now
-// We keep a light fallback interval only for badge count sync
 let notificationSyncInterval;
 
-// ============================================
-// API CALL FUNCTION (GAS SAFE – NO CORS)
-// ============================================
+// ── API HELPER ────────────────────────────────────────────────────────────────
 async function apiCall(action, params = {}) {
   try {
     const payload = { action, ...params };
-
     const body = Object.keys(payload)
-      .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(payload[key]))
+      .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]))
       .join('&');
-
-    const response = await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body
+      body
     });
-
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
+    return await res.json();
+  } catch (err) {
+    console.error('API error:', err);
+    throw err;
   }
 }
 
-// ============================================
-// INITIALIZATION
-// ============================================
-window.addEventListener('load', function() {
-  setTimeout(function() {
-    checkAuth();
-  }, 2000);
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(checkAuth, 2000);
 
-  window.addEventListener('beforeinstallprompt', function(e) {
+  window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferredPrompt = e;
   });
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js')
-      .then(registration => console.log('Service Worker registered:', registration.scope))
-      .catch(error => console.log('Service Worker registration failed:', error));
-  }
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.log('SW failed:', e));
 
-  // Handle FCM token refresh triggered by service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', function(event) {
-      if (event.data && event.data.type === 'FCM_TOKEN_REFRESH' && currentUser) {
-        console.log('Re-registering FCM token after subscription change...');
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data?.type === 'FCM_TOKEN_REFRESH' && currentUser) {
         registerFCMToken(currentUser.email);
       }
     });
   }
-
 });
 
+// ── SCREEN MANAGER ────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
 
-// ============================================
-// AUTHENTICATION
-// ============================================
+// ── AUTH ──────────────────────────────────────────────────────────────────────
 function checkAuth() {
-  const savedUser = localStorage.getItem('currentUser');
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
+  const saved = localStorage.getItem('currentUser');
+  if (saved) {
+    currentUser = JSON.parse(saved);
     checkForAnnouncement();
   } else {
     showScreen('loginScreen');
   }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      handleLogin();
-    });
-  }
-
-  const dataRequestForm = document.getElementById('dataRequestForm');
-  if (dataRequestForm) {
-    dataRequestForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      handleDataRequestSubmit();
-    });
-  }
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loginForm')?.addEventListener('submit', e => { e.preventDefault(); handleLogin(); });
+  document.getElementById('dataRequestForm')?.addEventListener('submit', e => { e.preventDefault(); handleDataRequestSubmit(); });
 });
 
 async function handleLogin() {
-  const email = document.getElementById('email').value.trim();
+  const email    = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   const errorDiv = document.getElementById('loginError');
-  const loginBtn = document.getElementById('loginBtn');
-  const loginBtnText = document.getElementById('loginBtnText');
-  const loginBtnLoader = document.getElementById('loginBtnLoader');
+  const btn      = document.getElementById('loginBtn');
+  const btnText  = document.getElementById('loginBtnText');
+  const btnLoad  = document.getElementById('loginBtnLoader');
 
   errorDiv.classList.remove('show');
-  errorDiv.textContent = '';
-  loginBtn.disabled = true;
-  loginBtnText.style.display = 'none';
-  loginBtnLoader.style.display = 'inline-flex';
+  btn.disabled = true;
+  btnText.style.display = 'none';
+  btnLoad.style.display = 'inline-flex';
 
   try {
     const result = await apiCall('validateLogin', { email, password });
-
-    loginBtn.disabled = false;
-    loginBtnText.style.display = 'inline';
-    loginBtnLoader.style.display = 'none';
+    btn.disabled = false;
+    btnText.style.display = 'inline';
+    btnLoad.style.display = 'none';
 
     if (result.success) {
       currentUser = result.user;
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-      // ✅ FCM: Register device for push notifications after successful login
       registerFCMToken(currentUser.email);
-
       checkForAnnouncement();
     } else {
       errorDiv.textContent = result.message;
       errorDiv.classList.add('show');
     }
-  } catch (error) {
-    loginBtn.disabled = false;
-    loginBtnText.style.display = 'inline';
-    loginBtnLoader.style.display = 'none';
-    errorDiv.textContent = 'Login failed. Please check your connection and try again.';
+  } catch {
+    btn.disabled = false;
+    btnText.style.display = 'inline';
+    btnLoad.style.display = 'none';
+    errorDiv.textContent = 'Login failed. Please check your connection.';
     errorDiv.classList.add('show');
-    console.error(error);
   }
 }
 
-// ============================================
-// FCM TOKEN REGISTRATION
-// This runs after login and saves device token to backend
-// so GAS can send push to this specific device later
-// ============================================
+// ── FCM ───────────────────────────────────────────────────────────────────────
 async function registerFCMToken(userEmail) {
   try {
-    // Request notification permission from user
     const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
 
-    if (permission !== 'granted') {
-      console.log('Notification permission denied by user');
-      return;
-    }
-
-    // Wait for Firebase to be ready (it loads as a module after script.js)
     if (!window.firebaseReady) {
-      document.addEventListener('firebaseReady', function() {
-        registerFCMToken(userEmail);
-      });
+      document.addEventListener('firebaseReady', () => registerFCMToken(userEmail));
       return;
     }
-
-    // Get the FCM device token
-    if (typeof window.firebaseRequestToken !== 'function') {
-      throw new Error('Firebase token helper is not initialized yet.');
-    }
+    if (typeof window.firebaseRequestToken !== 'function') return;
 
     const token = await window.firebaseRequestToken();
-
     if (token) {
-      console.log('FCM Token obtained:', token.substring(0, 20) + '...');
-
-      // Save token to Google Sheet via GAS so backend can push to this device
-      await apiCall('saveFCMToken', {
-        userEmail: userEmail,
-        fcmToken: token
-      });
-
-      console.log('FCM token saved to backend successfully');
-    } else {
-      console.log('No FCM token available');
+      await apiCall('saveFCMToken', { userEmail, fcmToken: token });
     }
-  } catch (error) {
-    // Non-fatal — app still works, just without push notifications
-    if (String(error && error.message).includes('messaging/token-subscribe-failed')) {
-      console.error('FCM token registration failed: token-subscribe-failed. Check Firebase Web API key restrictions and enable the "Firebase Cloud Messaging API" in Google Cloud Console.');
-    }
-    console.error('FCM token registration failed:', error);
+  } catch (err) {
+    console.error('FCM token registration failed:', err);
   }
 }
 
-// ============================================
-// SCREEN MANAGEMENT
-// ============================================
-function showScreen(screenId) {
-  document.querySelectorAll('.screen').forEach(function(screen) {
-    screen.classList.remove('active');
-  });
-  document.getElementById(screenId).classList.add('active');
-}
-
-// ============================================
-// ANNOUNCEMENTS
-// ============================================
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────────
 async function checkForAnnouncement() {
   try {
-    const announcement = await apiCall('getActiveAnnouncement');
-    if (announcement && !sessionStorage.getItem('announcementShown')) {
-      showAnnouncement(announcement);
+    const ann = await apiCall('getActiveAnnouncement');
+    if (ann && !sessionStorage.getItem('announcementShown')) {
+      showAnnouncement(ann);
     } else {
       showMainApp();
     }
-  } catch (error) {
-    console.error('Error loading announcement:', error);
+  } catch {
     showMainApp();
   }
 }
 
-function showAnnouncement(announcement) {
+function showAnnouncement(ann) {
   const content = document.getElementById('announcementContent');
   let html = '';
-  if (announcement.imageUrl) {
-    html += '<img src="' + escapeHtml(announcement.imageUrl) + '" alt="Announcement">';
-  }
-  if (announcement.message) {
-    html += '<p>' + escapeHtml(announcement.message) + '</p>';
-  }
+  if (ann.imageUrl) html += `<img src="${escapeHtml(ann.imageUrl)}" alt="Announcement">`;
+  if (ann.message)  html += `<p>${escapeHtml(ann.message)}</p>`;
   content.innerHTML = html;
   showScreen('announcementScreen');
 }
@@ -240,563 +159,680 @@ function closeAnnouncement() {
 }
 
 async function showAnnouncements() {
-  toggleMenu();
+  closeMenu();
   try {
-    const announcement = await apiCall('getActiveAnnouncement');
-    if (announcement) {
-      sessionStorage.removeItem('announcementShown');
-      showAnnouncement(announcement);
-    } else {
-      alert('No announcements at this time.');
-    }
-  } catch (error) {
-    console.error('Error loading announcement:', error);
-    alert('Error loading announcements.');
-  }
+    const ann = await apiCall('getActiveAnnouncement');
+    if (ann) { sessionStorage.removeItem('announcementShown'); showAnnouncement(ann); }
+    else alert('No announcements at this time.');
+  } catch { alert('Error loading announcements.'); }
 }
 
-// ============================================
-// MAIN APP
-// ============================================
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
 function showMainApp() {
   updateUserInfo();
   showScreen('mainScreen');
   loadLinks();
   checkIfOperationsTeam();
-
-  // ✅ CHANGED: Light sync every 5 minutes just to update badge count
-  // Heavy lifting (actual push delivery) is now done by FCM
-  // This is just a fallback sync — NOT the main notification mechanism
+  checkTeamAccess();
+  loadDashboardStats();
   loadNotifications();
-  notificationSyncInterval = setInterval(loadNotifications, 5 * 60 * 1000); // every 5 min
-
-  const searchInput = document.getElementById('globalSearch');
-  searchInput.value = '';
-  searchInput.oninput = e => {
-    const q = e.target.value.toLowerCase();
-    document.querySelectorAll('.link-card').forEach(card => {
-      card.style.display = card.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
-    });
-  };
+  notificationSyncInterval = setInterval(loadNotifications, 5 * 60 * 1000);
 
   if (!window.matchMedia('(display-mode: standalone)').matches) {
-    setTimeout(function() {
-      document.getElementById('installPrompt').classList.add('show');
-    }, 2000);
+    setTimeout(() => document.getElementById('installPrompt').classList.add('show'), 2000);
   }
 }
 
 function updateUserInfo() {
-  if (currentUser) {
-    document.getElementById('userName').textContent = currentUser.name;
-    document.getElementById('userEmail').textContent = currentUser.email;
-    document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
-    document.getElementById('reqUserName').textContent = currentUser.name;
-    document.getElementById('reqUserRole').textContent = currentUser.role;
-    updateDateTime();
-  }
+  if (!currentUser) return;
+  document.getElementById('userName').textContent   = currentUser.name;
+  document.getElementById('userEmail').textContent  = currentUser.email;
+  document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+  document.getElementById('reqUserName').textContent = currentUser.name;
+  document.getElementById('reqUserRole').textContent = currentUser.role;
+  // Show role badge
+  const roleBadge = document.getElementById('userRoleBadge');
+  if (roleBadge) roleBadge.textContent = currentUser.role;
+  updateDateTime();
 }
 
 function updateDateTime() {
   const now = new Date();
-  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  document.getElementById('reqDateTime').textContent = now.toLocaleString('en-IN', options);
+  const opts = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const el = document.getElementById('reqDateTime');
+  if (el) el.textContent = now.toLocaleString('en-IN', opts);
 }
 
-function togglePin(url) {
-  let pins = JSON.parse(localStorage.getItem('pinnedLinks') || '[]');
-  pins = pins.includes(url) ? pins.filter(p => p !== url) : [...pins, url];
-  localStorage.setItem('pinnedLinks', JSON.stringify(pins));
+// ── ROLE HELPERS ──────────────────────────────────────────────────────────────
+function getRoleTier(role) {
+  const r = (role || '').toLowerCase().trim();
+  if (r === 'executive' || r === 'sales executive') return 1;
+  if (r === 'team leader' || r === 'tl') return 2;
+  if (r === 'manager') return 3;
+  if (r === 'admin') return 4;
+  return 0;
 }
 
-// ============================================
-// OPERATIONS TEAM CHECK
-// ============================================
+function canSeeTeam() {
+  return currentUser && getRoleTier(currentUser.role) >= 2;
+}
+
+// ── OPERATIONS CHECK ──────────────────────────────────────────────────────────
 async function checkIfOperationsTeam() {
   if (!currentUser) return;
   try {
     const result = await apiCall('isOperationsTeam', { userEmail: currentUser.email });
     if (result.isOperationsTeam) {
-      document.getElementById('opsMenuBtn').style.display = 'block';
+      document.getElementById('opsMenuBtn').style.display = 'flex';
     }
-  } catch (error) {
-    console.error('Error checking operations team:', error);
+  } catch {}
+}
+
+async function checkTeamAccess() {
+  if (!currentUser) return;
+  if (canSeeTeam()) {
+    document.getElementById('teamMenuBtn').style.display = 'flex';
   }
 }
 
-// ============================================
-// LINKS
-// ============================================
+// ── DASHBOARD STATS ───────────────────────────────────────────────────────────
+async function loadDashboardStats() {
+  if (!currentUser) return;
+  try {
+    const stats = await apiCall('getDashboardStats', { userEmail: currentUser.email });
+    if (stats.success) {
+      const t = stats.incentiveTotals || {};
+      setEl('dashIncentiveGenerated', '₹' + formatNum(t.generated || 0));
+      setEl('dashIncentivePaid',      '₹' + formatNum(t.paid || 0));
+      setEl('dashIncentivePending',   '₹' + formatNum(t.pending || 0));
+      setEl('dashPendingReq',  stats.pendingRequests || 0);
+      setEl('dashTotalReq',    stats.totalRequests   || 0);
+    }
+  } catch (err) {
+    console.error('Dashboard stats error:', err);
+  }
+}
+
+function formatNum(n) {
+  return Number(n).toLocaleString('en-IN');
+}
+
+function setEl(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ── LINKS ─────────────────────────────────────────────────────────────────────
 async function loadLinks() {
   if (!currentUser) return;
-  document.getElementById('loadingSpinner').classList.remove('hide');
+  document.getElementById('loadingSpinner')?.classList.remove('hide');
   document.getElementById('linksContainer').innerHTML = '';
 
   try {
     const links = await apiCall('getLinksForUser', { userEmail: currentUser.email });
     displayLinks(links);
-  } catch (error) {
-    showError(error);
+  } catch (err) {
+    document.getElementById('loadingSpinner')?.classList.add('hide');
+    document.getElementById('linksContainer').innerHTML =
+      '<div class="empty-state">Error loading links. Please refresh.</div>';
   }
 }
 
 function displayLinks(links) {
-  document.getElementById('loadingSpinner').classList.add('hide');
+  document.getElementById('loadingSpinner')?.classList.add('hide');
   const container = document.getElementById('linksContainer');
 
-  if (links.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;">No links available for you</div>';
+  if (!links || links.length === 0) {
+    container.innerHTML = '<div class="empty-state">No links available for you</div>';
     return;
   }
 
-  links.forEach(function(link) {
+  links.forEach(link => {
     const card = document.createElement('div');
-    card.className = 'link-card';
-    card.setAttribute('data-url', link.url);
+    card.className = 'link-chip';
+
+    const logoHtml = link.logoUrl
+      ? `<img src="${escapeHtml(link.logoUrl)}" alt="${escapeHtml(link.title)}" class="link-logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+
+    const initials = link.title.substring(0, 2).toUpperCase();
+    const fallback = `<div class="link-logo-fallback" ${link.logoUrl ? 'style="display:none"' : ''}>${initials}</div>`;
 
     card.innerHTML = `
-      <div class="link-info">
-        <div class="link-title">${escapeHtml(link.title)}</div>
-        <div class="link-url">${escapeHtml(link.url)}</div>
+      <div class="link-logo-wrap">
+        ${logoHtml}
+        ${fallback}
       </div>
-      <div class="link-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
-        </svg>
-      </div>
+      <span class="link-chip-name">${escapeHtml(link.title)}</span>
     `;
 
-    card.addEventListener('click', function() {
-      openLink(this.getAttribute('data-url'));
-    });
-
+    card.addEventListener('click', () => openLink(link.url));
     container.appendChild(card);
   });
 }
 
-function showError(error) {
-  document.getElementById('loadingSpinner').classList.add('hide');
-  document.getElementById('linksContainer').innerHTML =
-    '<div style="text-align:center;padding:40px;color:#ef4444;">Error loading links. Please refresh.</div>';
-  console.error(error);
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+function toggleSearch() {
+  const bar = document.getElementById('searchBar');
+  const input = document.getElementById('globalSearch');
+  bar.classList.toggle('search-bar-open');
+  if (bar.classList.contains('search-bar-open')) {
+    input.focus();
+    input.oninput = e => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('.link-chip').forEach(card => {
+        card.style.display = card.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+      });
+    };
+  } else {
+    input.value = '';
+    document.querySelectorAll('.link-chip').forEach(c => c.style.display = 'flex');
+  }
 }
 
 function openLink(url) {
-  trackRecent(url);
-  var link = document.createElement('a');
-  link.href = url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-function trackRecent(url) {
-  let recent = JSON.parse(localStorage.getItem('recentLinks') || '[]');
-  recent = [url, ...recent.filter(r => r !== url)].slice(0, 5);
-  localStorage.setItem('recentLinks', JSON.stringify(recent));
+// ── VIEW NAVIGATION ───────────────────────────────────────────────────────────
+const VIEWS = ['linksView','dataRequestView','myRequestsView','operationsView','teamView','incentiveView','payslipView','profileView'];
+
+function showView(id) {
+  VIEWS.forEach(v => {
+    const el = document.getElementById(v);
+    if (el) el.style.display = v === id ? 'block' : 'none';
+  });
 }
 
-// ============================================
-// VIEW NAVIGATION
-// ============================================
-function showLinksView() {
-  document.getElementById('linksView').style.display = 'block';
-  document.getElementById('dataRequestView').style.display = 'none';
-  document.getElementById('myRequestsView').style.display = 'none';
-  document.getElementById('operationsView').style.display = 'none';
-  toggleMenu();
-}
+function showLinksView()         { showView('linksView');        closeMenu(); loadDashboardStats(); }
+function showDataRequestPortal() { showView('dataRequestView');  closeMenu(); updateDateTime(); resetRequestForm(); }
+function showMyRequests()        { showView('myRequestsView');   closeMenu(); setTimeout(loadMyRequests, 50); }
+function showOperationsPanel()   { showView('operationsView');   closeMenu(); loadOperationsPanel(); }
+function showTeamView()          { showView('teamView');         closeMenu(); loadTeamView(); }
+function showIncentiveView()     { showView('incentiveView');    closeMenu(); loadIncentiveView(); }
+function showPayslipView()       { showView('payslipView');      closeMenu(); loadPayslips(); }
+function showProfileView()       { showView('profileView');      closeMenu(); loadProfile(); }
+function showAttendanceView()    { closeMenu(); showToast('Attendance feature coming soon! 🚀', 'info'); }
 
-function showDataRequestPortal() {
-  document.getElementById('linksView').style.display = 'none';
-  document.getElementById('dataRequestView').style.display = 'block';
-  document.getElementById('myRequestsView').style.display = 'none';
-  document.getElementById('operationsView').style.display = 'none';
-  updateDateTime();
+function resetRequestForm() {
   document.getElementById('remarks').value = '';
   document.getElementById('requestError').classList.remove('show');
   document.getElementById('requestSuccess').classList.remove('show');
-  toggleMenu();
 }
 
-function showMyRequests() {
-  document.getElementById('linksView').style.display = 'none';
-  document.getElementById('dataRequestView').style.display = 'none';
-  document.getElementById('myRequestsView').style.display = 'block';
-  document.getElementById('operationsView').style.display = 'none';
-  toggleMenu();
-  setTimeout(loadMyRequests, 50);
-}
-
-function showOperationsPanel() {
-  document.getElementById('linksView').style.display = 'none';
-  document.getElementById('dataRequestView').style.display = 'none';
-  document.getElementById('myRequestsView').style.display = 'none';
-  document.getElementById('operationsView').style.display = 'block';
-  loadOperationsPanel();
-  toggleMenu();
-}
-
-// ============================================
-// DATA REQUEST SUBMISSION
-// ============================================
+// ── DATA REQUEST ──────────────────────────────────────────────────────────────
 async function handleDataRequestSubmit() {
-  const remarks = document.getElementById('remarks').value.trim();
-  const errorDiv = document.getElementById('requestError');
-  const successDiv = document.getElementById('requestSuccess');
-  const submitBtn = document.getElementById('submitRequestBtn');
-  const submitBtnText = document.getElementById('submitBtnText');
-  const submitBtnLoader = document.getElementById('submitBtnLoader');
+  const remarks   = document.getElementById('remarks').value.trim();
+  const errorDiv  = document.getElementById('requestError');
+  const successDiv= document.getElementById('requestSuccess');
+  const btn       = document.getElementById('submitRequestBtn');
+  const btnText   = document.getElementById('submitBtnText');
+  const btnLoad   = document.getElementById('submitBtnLoader');
 
-  if (!remarks) {
-    errorDiv.textContent = 'Please enter request details';
-    errorDiv.classList.add('show');
-    return;
-  }
+  if (!remarks) { errorDiv.textContent = 'Please enter request details'; errorDiv.classList.add('show'); return; }
 
   errorDiv.classList.remove('show');
   successDiv.classList.remove('show');
-  submitBtn.disabled = true;
-  submitBtnText.style.display = 'none';
-  submitBtnLoader.style.display = 'inline-flex';
+  btn.disabled = true; btnText.style.display = 'none'; btnLoad.style.display = 'inline-flex';
 
   try {
     const result = await apiCall('submitDataRequest', {
-      userEmail: currentUser.email,
-      userName: currentUser.name,
-      userRole: currentUser.role,
-      remarks: remarks
+      userEmail: currentUser.email, userName: currentUser.name,
+      userRole: currentUser.role, remarks
     });
-
-    submitBtn.disabled = false;
-    submitBtnText.style.display = 'inline';
-    submitBtnLoader.style.display = 'none';
-
+    btn.disabled = false; btnText.style.display = 'inline'; btnLoad.style.display = 'none';
     if (result.success) {
-      successDiv.innerHTML = `
-        <strong>✓ Request Submitted Successfully!</strong><br>
-        Request ID: ${result.requestId}<br>
-        Estimated Time: ${result.estimatedTime}
-      `;
+      successDiv.innerHTML = `<strong>✓ Request Submitted!</strong><br>ID: ${result.requestId} | Est: ${result.estimatedTime}`;
       successDiv.classList.add('show');
       document.getElementById('remarks').value = '';
-      document.getElementById('estimatedTime').textContent = result.estimatedTime;
-      setTimeout(function() { successDiv.classList.remove('show'); }, 5000);
+      setTimeout(() => successDiv.classList.remove('show'), 5000);
     } else {
-      errorDiv.textContent = result.message;
-      errorDiv.classList.add('show');
+      errorDiv.textContent = result.message; errorDiv.classList.add('show');
     }
-  } catch (error) {
-    submitBtn.disabled = false;
-    submitBtnText.style.display = 'inline';
-    submitBtnLoader.style.display = 'none';
-    errorDiv.textContent = 'Error submitting request. Please try again.';
-    errorDiv.classList.add('show');
-    console.error(error);
+  } catch {
+    btn.disabled = false; btnText.style.display = 'inline'; btnLoad.style.display = 'none';
+    errorDiv.textContent = 'Error submitting. Please try again.'; errorDiv.classList.add('show');
   }
 }
 
-// ============================================
-// MY REQUESTS
-// ============================================
+// ── MY REQUESTS ───────────────────────────────────────────────────────────────
 async function loadMyRequests() {
   if (!currentUser) return;
-
-  document.getElementById('myRequestsLoading').classList.remove('hide');
-  document.getElementById('myRequestsContainer').innerHTML = '';
+  const loading   = document.getElementById('myRequestsLoading');
+  const container = document.getElementById('myRequestsContainer');
+  loading.classList.remove('hide'); container.innerHTML = '';
 
   try {
     const requests = await apiCall('getUserRequests', { userEmail: currentUser.email });
-    document.getElementById('myRequestsLoading').classList.add('hide');
+    loading.classList.add('hide');
     displayMyRequests(requests);
-  } catch (error) {
-    document.getElementById('myRequestsLoading').classList.add('hide');
-    document.getElementById('myRequestsContainer').innerHTML =
-      '<div class="empty-state">Error loading requests. Please try again.</div>';
-    console.error(error);
+  } catch {
+    loading.classList.add('hide');
+    container.innerHTML = '<div class="empty-state">Error loading requests.</div>';
   }
 }
 
 function displayMyRequests(requests) {
   const container = document.getElementById('myRequestsContainer');
-
-  if (requests.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        <p>No requests yet</p>
-      </div>
-    `;
+  if (!requests.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No requests yet</p></div>`;
     return;
   }
-
   container.innerHTML = '';
-
-  requests.forEach(function(req) {
+  requests.forEach(req => {
     const card = document.createElement('div');
     card.className = 'request-card';
-
-    let statusClass = 'status-pending';
-    if (req.status === 'Completed') statusClass = 'status-completed';
-    if (req.status === 'Rejected') statusClass = 'status-rejected';
-
-    let detailsHtml = `
+    let sc = req.status === 'Completed' ? 'status-completed' : req.status === 'Rejected' ? 'status-rejected' : 'status-pending';
+    let extra = '';
+    if (req.status === 'Completed' && req.actualCompleteTime)
+      extra += `<div class="request-detail"><strong>Completed:</strong><span>${escapeHtml(req.actualCompleteTime)}</span></div>
+                <div class="request-detail"><strong>Handled By:</strong><span>${escapeHtml(req.handledBy)}</span></div>`;
+    if (req.status === 'Rejected' && req.rejectReason)
+      extra += `<div class="request-detail"><strong>Reason:</strong><span style="color:#fca5a5">${escapeHtml(req.rejectReason)}</span></div>`;
+    card.innerHTML = `
       <div class="request-card-header">
         <span class="request-id">${escapeHtml(req.requestId)}</span>
-        <span class="request-status ${statusClass}">${escapeHtml(req.status)}</span>
+        <span class="request-status ${sc}">${escapeHtml(req.status)}</span>
       </div>
-      <div class="request-detail">
-        <strong>Requested:</strong>
-        <span>${escapeHtml(req.requestDate)} at ${escapeHtml(req.requestTime)}</span>
-      </div>
-      <div class="request-detail">
-        <strong>Estimated:</strong>
-        <span>${escapeHtml(req.estimatedTime)}</span>
-      </div>
-    `;
-
-    if (req.status === 'Completed' && req.actualCompleteTime) {
-      detailsHtml += `
-        <div class="request-detail">
-          <strong>Completed:</strong>
-          <span>${escapeHtml(req.actualCompleteTime)}</span>
-        </div>
-        <div class="request-detail">
-          <strong>Handled By:</strong>
-          <span>${escapeHtml(req.handledBy)}</span>
-        </div>
-      `;
-    }
-
-    if (req.status === 'Rejected' && req.rejectReason) {
-      detailsHtml += `
-        <div class="request-detail">
-          <strong>Reason:</strong>
-          <span style="color: #fca5a5;">${escapeHtml(req.rejectReason)}</span>
-        </div>
-      `;
-    }
-
-    detailsHtml += `
-      <div class="request-remarks">
-        <strong>Details:</strong><br>
-        ${escapeHtml(req.remarks)}
-      </div>
-    `;
-
-    card.innerHTML = detailsHtml;
+      <div class="request-detail"><strong>Date:</strong><span>${escapeHtml(req.requestDate)} ${escapeHtml(req.requestTime)}</span></div>
+      <div class="request-detail"><strong>Est. Time:</strong><span>${escapeHtml(req.estimatedTime)}</span></div>
+      ${extra}
+      <div class="request-remarks"><strong>Details:</strong><br>${escapeHtml(req.remarks)}</div>`;
     container.appendChild(card);
   });
 }
 
-// ============================================
-// OPERATIONS PANEL
-// ============================================
+// ── OPERATIONS PANEL ──────────────────────────────────────────────────────────
 async function loadOperationsPanel() {
   document.getElementById('operationsLoading').classList.remove('hide');
   document.getElementById('operationsContainer').innerHTML = '';
-
   try {
     const stats = await apiCall('getOperationsStats');
     displayOperationsStats(stats);
-
     const requests = await apiCall('getAllPendingRequests');
     document.getElementById('operationsLoading').classList.add('hide');
     displayOperationsRequests(requests);
-  } catch (error) {
+  } catch {
     document.getElementById('operationsLoading').classList.add('hide');
-    document.getElementById('operationsContainer').innerHTML =
-      '<div class="empty-state">Error loading requests. Please try again.</div>';
-    console.error(error);
+    document.getElementById('operationsContainer').innerHTML = '<div class="empty-state">Error loading requests.</div>';
   }
 }
 
 function displayOperationsStats(stats) {
   const container = document.getElementById('operationsStatsContainer');
   let html = '';
-  for (var member in stats) {
-    html += `
-      <div class="stat-card">
-        <div class="stat-number">${stats[member]}</div>
-        <div class="stat-label">${escapeHtml(member)}</div>
-      </div>
-    `;
+  for (const member in stats) {
+    html += `<div class="stat-card"><div class="stat-number">${stats[member]}</div><div class="stat-label">${escapeHtml(member)}</div></div>`;
   }
   container.innerHTML = html;
 }
 
 function displayOperationsRequests(requests) {
   const container = document.getElementById('operationsContainer');
-
-  if (requests.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <p>No pending requests</p>
-      </div>
-    `;
+  if (!requests.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>No pending requests</p></div>`;
     return;
   }
-
   container.innerHTML = '';
-
-  requests.forEach(function(req) {
+  requests.forEach(req => {
     const card = document.createElement('div');
     card.className = 'request-card';
-
     card.innerHTML = `
       <div class="request-card-header">
         <span class="request-id">${escapeHtml(req.requestId)}</span>
         <span class="request-status status-pending">${escapeHtml(req.status)}</span>
       </div>
-      <div class="request-detail">
-        <strong>Requested By:</strong>
-        <span>${escapeHtml(req.requestedBy)} (${escapeHtml(req.role)})</span>
-      </div>
-      <div class="request-detail">
-        <strong>Email:</strong>
-        <span>${escapeHtml(req.email)}</span>
-      </div>
-      <div class="request-detail">
-        <strong>Requested:</strong>
-        <span>${escapeHtml(req.requestDate)} at ${escapeHtml(req.requestTime)}</span>
-      </div>
-      <div class="request-detail">
-        <strong>Estimated:</strong>
-        <span>${escapeHtml(req.estimatedTime)}</span>
-      </div>
-      <div class="request-remarks">
-        <strong>Request Details:</strong><br>
-        ${escapeHtml(req.remarks)}
-      </div>
+      <div class="request-detail"><strong>By:</strong><span>${escapeHtml(req.requestedBy)} (${escapeHtml(req.role)})</span></div>
+      <div class="request-detail"><strong>Email:</strong><span>${escapeHtml(req.email)}</span></div>
+      <div class="request-detail"><strong>Date:</strong><span>${escapeHtml(req.requestDate)} ${escapeHtml(req.requestTime)}</span></div>
+      <div class="request-detail"><strong>Est. Time:</strong><span>${escapeHtml(req.estimatedTime)}</span></div>
+      <div class="request-remarks"><strong>Details:</strong><br>${escapeHtml(req.remarks)}</div>
       <div class="request-actions">
-        <button class="btn-small btn-complete" onclick="completeRequest('${escapeHtml(req.requestId)}')">
-          ✓ Complete
-        </button>
-        <button class="btn-small btn-pending" onclick="updateTimeline('${escapeHtml(req.requestId)}')">
-          ⏱ Update Timeline
-        </button>
-        <button class="btn-small btn-reject" onclick="rejectRequest('${escapeHtml(req.requestId)}')">
-          ✗ Reject
-        </button>
-      </div>
-    `;
-
+        <button class="btn-small btn-complete" onclick="completeRequest('${escapeHtml(req.requestId)}')">✓ Complete</button>
+        <button class="btn-small btn-pending"  onclick="updateTimeline('${escapeHtml(req.requestId)}')">⏱ Timeline</button>
+        <button class="btn-small btn-reject"   onclick="rejectRequest('${escapeHtml(req.requestId)}')">✗ Reject</button>
+      </div>`;
     container.appendChild(card);
   });
 }
 
-async function completeRequest(requestId) {
-  if (!confirm('Mark this request as completed?')) return;
-  try {
-    const result = await apiCall('updateRequestStatus', {
-      requestId,
-      status: 'Completed',
-      handledBy: currentUser.name,
-      rejectReason: ''
-    });
-    if (result.success) {
-      alert('Request marked as completed!');
-      loadOperationsPanel();
-    } else {
-      alert('Error: ' + result.message);
-    }
-  } catch (error) {
-    alert('Error completing request');
-    console.error(error);
-  }
+async function completeRequest(id) {
+  if (!confirm('Mark as completed?')) return;
+  const r = await apiCall('updateRequestStatus', { requestId: id, status: 'Completed', handledBy: currentUser.name, rejectReason: '' });
+  if (r.success) { showToast('Request marked complete!', 'success'); loadOperationsPanel(); }
+  else alert('Error: ' + r.message);
 }
-
-async function updateTimeline(requestId) {
-  var reason = prompt('Enter reason for delay or updated timeline:');
+async function updateTimeline(id) {
+  const reason = prompt('Enter reason for delay / updated timeline:');
   if (!reason) return;
-  try {
-    const result = await apiCall('updateRequestStatus', {
-      requestId,
-      status: 'Pending',
-      handledBy: currentUser.name,
-      rejectReason: reason
-    });
-    if (result.success) {
-      alert('Timeline updated!');
-      loadOperationsPanel();
-    } else {
-      alert('Error: ' + result.message);
-    }
-  } catch (error) {
-    alert('Error updating timeline');
-    console.error(error);
-  }
+  const r = await apiCall('updateRequestStatus', { requestId: id, status: 'Pending', handledBy: currentUser.name, rejectReason: reason });
+  if (r.success) { showToast('Timeline updated!', 'success'); loadOperationsPanel(); }
+  else alert('Error: ' + r.message);
 }
-
-async function rejectRequest(requestId) {
-  var reason = prompt('Enter reason for rejection:');
+async function rejectRequest(id) {
+  const reason = prompt('Enter reason for rejection:');
   if (!reason) return;
-  if (!confirm('Reject this request? User will need management approval to resubmit.')) return;
+  if (!confirm('Reject this request?')) return;
+  const r = await apiCall('updateRequestStatus', { requestId: id, status: 'Rejected', handledBy: currentUser.name, rejectReason: reason });
+  if (r.success) { showToast('Request rejected', 'error'); loadOperationsPanel(); }
+  else alert('Error: ' + r.message);
+}
+
+// ── TEAM VIEW ─────────────────────────────────────────────────────────────────
+async function loadTeamView() {
+  if (!currentUser) return;
+  const container = document.getElementById('teamContainer');
+  container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading team...</p></div>`;
+
   try {
-    const result = await apiCall('updateRequestStatus', {
-      requestId,
-      status: 'Rejected',
-      handledBy: currentUser.name,
-      rejectReason: reason
-    });
-    if (result.success) {
-      alert('Request rejected!');
-      loadOperationsPanel();
-    } else {
-      alert('Error: ' + result.message);
-    }
-  } catch (error) {
-    alert('Error rejecting request');
-    console.error(error);
+    const result = await apiCall('getTeamForUser', { userEmail: currentUser.email });
+    if (!result.success) { container.innerHTML = '<div class="empty-state">Error loading team.</div>'; return; }
+    displayTeam(result.team);
+  } catch {
+    container.innerHTML = '<div class="empty-state">Error loading team.</div>';
   }
 }
 
-// ============================================
-// NOTIFICATIONS
-// ✅ CHANGED: This now only syncs the badge count
-// Actual push delivery is handled by FCM + service-worker
-// ============================================
+function displayTeam(team) {
+  const container = document.getElementById('teamContainer');
+  if (!team || !team.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><p>No team members found</p></div>`;
+    return;
+  }
+
+  const tier = (r) => getRoleTier(r);
+  const roleColor = { 1: '#22c55e', 2: '#f59e0b', 3: '#6366f1' };
+
+  container.innerHTML = `<div class="team-count-badge">${team.length} member${team.length !== 1 ? 's' : ''}</div>`;
+
+  team.forEach(member => {
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    const t = tier(member.role);
+    const color = roleColor[t] || '#94a3b8';
+    card.innerHTML = `
+      <div class="team-card-left">
+        <div class="team-avatar" style="background:${color}20;color:${color};border:2px solid ${color}40">
+          ${member.name.charAt(0).toUpperCase()}
+        </div>
+        <div class="team-info">
+          <div class="team-name">${escapeHtml(member.name)}</div>
+          <div class="team-role" style="color:${color}">${escapeHtml(member.role)}</div>
+          <div class="team-dept">${escapeHtml(member.department || '—')}</div>
+        </div>
+      </div>
+      <div class="team-card-right">
+        <div class="team-detail-row">📧 <a href="mailto:${escapeHtml(member.email)}" class="team-email">${escapeHtml(member.email)}</a></div>
+        ${member.phone ? `<div class="team-detail-row">📞 <a href="tel:${escapeHtml(member.phone)}" class="team-phone">${escapeHtml(member.phone)}</a></div>` : ''}
+        ${member.joinDate ? `<div class="team-detail-row">📅 Joined ${escapeHtml(member.joinDate)}</div>` : ''}
+        ${member.designation ? `<div class="team-detail-row">🏷️ ${escapeHtml(member.designation)}</div>` : ''}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ── INCENTIVE VIEW ────────────────────────────────────────────────────────────
+async function loadIncentiveView() {
+  if (!currentUser) return;
+  const mySection   = document.getElementById('myIncentiveSection');
+  const teamSection = document.getElementById('teamIncentiveSection');
+
+  mySection.innerHTML   = `<div class="loading"><div class="spinner"></div></div>`;
+  teamSection.innerHTML = '';
+
+  try {
+    const myData = await apiCall('getMyIncentives', { userEmail: currentUser.email });
+    displayMyIncentives(myData);
+
+    if (canSeeTeam()) {
+      teamSection.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+      const teamData = await apiCall('getTeamIncentives', { userEmail: currentUser.email });
+      displayTeamIncentives(teamData);
+    }
+  } catch (err) {
+    mySection.innerHTML = '<div class="empty-state">Error loading incentives.</div>';
+  }
+}
+
+function displayMyIncentives(data) {
+  const section = document.getElementById('myIncentiveSection');
+  if (!data.success) { section.innerHTML = '<div class="empty-state">Error loading incentives.</div>'; return; }
+
+  const t = data.totals || {};
+  let html = `
+    <div class="incentive-summary">
+      <div class="inc-card inc-generated">
+        <div class="inc-label">Total Generated</div>
+        <div class="inc-amount">₹${formatNum(t.generated || 0)}</div>
+      </div>
+      <div class="inc-card inc-paid">
+        <div class="inc-label">Paid</div>
+        <div class="inc-amount">₹${formatNum(t.paid || 0)}</div>
+      </div>
+      <div class="inc-card inc-pending">
+        <div class="inc-label">Pending</div>
+        <div class="inc-amount">₹${formatNum(t.pending || 0)}</div>
+      </div>
+    </div>`;
+
+  if (data.incentives && data.incentives.length) {
+    html += '<div class="incentive-list">';
+    data.incentives.forEach(inc => {
+      const sc = inc.status === 'Paid' ? 'status-completed' : inc.status === 'Pending' ? 'status-pending' : 'status-pending';
+      html += `
+        <div class="incentive-row">
+          <div class="incentive-row-left">
+            <div class="incentive-month">${escapeHtml(inc.month)}</div>
+            <div class="incentive-desc">${escapeHtml(inc.description || '—')}</div>
+          </div>
+          <div class="incentive-row-right">
+            <div class="incentive-amt">₹${formatNum(inc.amount)}</div>
+            <span class="request-status ${sc}">${escapeHtml(inc.status)}</span>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+  } else {
+    html += `<div class="empty-state"><div class="empty-icon">💰</div><p>No incentive records yet</p></div>`;
+  }
+  section.innerHTML = html;
+}
+
+function displayTeamIncentives(data) {
+  const section = document.getElementById('teamIncentiveSection');
+  if (!data.success || !data.members || !data.members.length) {
+    section.innerHTML = `<div class="section-title">Team Incentives</div><div class="empty-state">No team incentive data</div>`;
+    return;
+  }
+
+  const teamTotal = data.members.reduce((s, m) => s + m.generated, 0);
+  let html = `
+    <div class="section-title">Team Incentives
+      <span class="team-total-badge">Team Total: ₹${formatNum(teamTotal)}</span>
+    </div>`;
+
+  data.members.forEach((member, idx) => {
+    html += `
+      <div class="team-incentive-card">
+        <div class="ti-rank">#${idx + 1}</div>
+        <div class="ti-info">
+          <div class="ti-name">${escapeHtml(member.name)}</div>
+          <div class="ti-role">${escapeHtml(member.role)}</div>
+        </div>
+        <div class="ti-amounts">
+          <div class="ti-gen">₹${formatNum(member.generated)}</div>
+          <div class="ti-sub">
+            <span class="ti-paid">Paid: ₹${formatNum(member.paid)}</span>
+            <span class="ti-pend">Pending: ₹${formatNum(member.pending)}</span>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  section.innerHTML = html;
+}
+
+// ── PAYSLIP VIEW ──────────────────────────────────────────────────────────────
+async function loadPayslips() {
+  if (!currentUser) return;
+  const container = document.getElementById('payslipContainer');
+  container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading payslips...</p></div>`;
+
+  try {
+    const result = await apiCall('getPayslips', { userEmail: currentUser.email });
+    if (!result.success) { container.innerHTML = '<div class="empty-state">Error loading payslips.</div>'; return; }
+
+    if (!result.payslips.length) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><p>No payslips available</p><small>Your payslips will appear here once uploaded by HR</small></div>`;
+      return;
+    }
+
+    // Group by year
+    const byYear = {};
+    result.payslips.forEach(p => {
+      const yr = p.year || '—';
+      if (!byYear[yr]) byYear[yr] = [];
+      byYear[yr].push(p);
+    });
+
+    let html = '';
+    Object.keys(byYear).sort((a, b) => b - a).forEach(yr => {
+      html += `<div class="payslip-year-header">${yr}</div><div class="payslip-grid">`;
+      byYear[yr].forEach(p => {
+        const icon = p.type === 'TaxSlip' ? '🧾' : '💼';
+        html += `
+          <div class="payslip-card">
+            <div class="payslip-icon">${icon}</div>
+            <div class="payslip-info">
+              <div class="payslip-month">${escapeHtml(p.month)} ${escapeHtml(p.year)}</div>
+              <div class="payslip-type">${escapeHtml(p.type)}</div>
+            </div>
+            ${p.fileUrl
+              ? `<a href="${escapeHtml(p.fileUrl)}" target="_blank" rel="noopener" class="payslip-download">⬇ Download</a>`
+              : `<span class="payslip-unavailable">Unavailable</span>`}
+          </div>`;
+      });
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  } catch {
+    container.innerHTML = '<div class="empty-state">Error loading payslips.</div>';
+  }
+}
+
+// ── PROFILE VIEW ──────────────────────────────────────────────────────────────
+async function loadProfile() {
+  if (!currentUser) return;
+  const container = document.getElementById('profileContainer');
+  container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+
+  try {
+    const result = await apiCall('getUserProfile', { userEmail: currentUser.email });
+    if (!result.success) { container.innerHTML = '<div class="empty-state">Error loading profile.</div>'; return; }
+    displayProfile(result.profile);
+  } catch {
+    container.innerHTML = '<div class="empty-state">Error loading profile.</div>';
+  }
+}
+
+function displayProfile(profile) {
+  const container = document.getElementById('profileContainer');
+  container.innerHTML = `
+    <div class="profile-card">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar">${(profile.name || 'U').charAt(0).toUpperCase()}</div>
+        <div class="profile-name">${escapeHtml(profile.name)}</div>
+        <div class="profile-designation">${escapeHtml(profile.designation || profile.role)}</div>
+      </div>
+      <div class="profile-details">
+        <div class="profile-row"><span class="pd-label">Email</span><span class="pd-value">${escapeHtml(profile.email)}</span></div>
+        <div class="profile-row"><span class="pd-label">Role</span><span class="pd-value">${escapeHtml(profile.role)}</span></div>
+        <div class="profile-row"><span class="pd-label">Department</span><span class="pd-value">${escapeHtml(profile.department || '—')}</span></div>
+        <div class="profile-row"><span class="pd-label">Phone</span><span class="pd-value">${escapeHtml(profile.phone || '—')}</span></div>
+        <div class="profile-row"><span class="pd-label">Joined</span><span class="pd-value">${escapeHtml(profile.joinDate || '—')}</span></div>
+        <div class="profile-row"><span class="pd-label">Status</span><span class="pd-value status-badge status-completed">${escapeHtml(profile.status)}</span></div>
+        <div class="profile-row"><span class="pd-label">Manager</span><span class="pd-value">${escapeHtml(profile.managedBy || '—')}</span></div>
+      </div>
+    </div>
+
+    <div class="password-card">
+      <div class="password-card-title">🔐 Change Password</div>
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" id="oldPassword" class="form-input" placeholder="Enter current password">
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="newPassword" class="form-input" placeholder="Min. 6 characters">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="confirmPassword" class="form-input" placeholder="Repeat new password">
+      </div>
+      <div id="pwError" class="error-message"></div>
+      <div id="pwSuccess" class="success-message"></div>
+      <button class="btn-primary" onclick="handleChangePassword()">Change Password</button>
+    </div>`;
+}
+
+async function handleChangePassword() {
+  const old     = document.getElementById('oldPassword').value;
+  const newPw   = document.getElementById('newPassword').value;
+  const confirm = document.getElementById('confirmPassword').value;
+  const errDiv  = document.getElementById('pwError');
+  const sucDiv  = document.getElementById('pwSuccess');
+
+  errDiv.classList.remove('show'); sucDiv.classList.remove('show');
+
+  if (!old) { errDiv.textContent = 'Please enter current password.'; errDiv.classList.add('show'); return; }
+  if (newPw.length < 6) { errDiv.textContent = 'New password must be at least 6 characters.'; errDiv.classList.add('show'); return; }
+  if (newPw !== confirm) { errDiv.textContent = 'Passwords do not match.'; errDiv.classList.add('show'); return; }
+
+  try {
+    const result = await apiCall('changePassword', { userEmail: currentUser.email, oldPassword: old, newPassword: newPw });
+    if (result.success) {
+      sucDiv.textContent = '✓ Password changed successfully!'; sucDiv.classList.add('show');
+      document.getElementById('oldPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+    } else {
+      errDiv.textContent = result.message; errDiv.classList.add('show');
+    }
+  } catch {
+    errDiv.textContent = 'Error changing password. Please try again.'; errDiv.classList.add('show');
+  }
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 async function loadNotifications() {
   if (!currentUser) return;
   try {
-    const notifications = await apiCall('getUnreadNotifications', { userEmail: currentUser.email });
-    updateNotificationBadge(notifications.length);
-  } catch (error) {
-    console.error('Error syncing notification badge:', error);
-  }
+    const notifs = await apiCall('getUnreadNotifications', { userEmail: currentUser.email });
+    updateNotificationBadge(notifs.length);
+  } catch {}
 }
 
 function updateNotificationBadge(count) {
   const badge = document.getElementById('notificationBadge');
-  if (count > 0) {
-    badge.textContent = count;
-    badge.style.display = 'block';
-  } else {
-    badge.style.display = 'none';
-  }
+  if (count > 0) { badge.textContent = count; badge.style.display = 'block'; }
+  else badge.style.display = 'none';
 }
 
 async function showNotifications() {
   const panel = document.getElementById('notificationsPanel');
   panel.classList.add('open');
-
   const container = document.getElementById('notificationsContent');
   container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
 
-  setTimeout(async function() {
+  setTimeout(async () => {
     try {
-      const notifications = await apiCall('getUnreadNotifications', { userEmail: currentUser.email });
-      displayNotifications(notifications);
-    } catch (error) {
+      const notifs = await apiCall('getUnreadNotifications', { userEmail: currentUser.email });
+      displayNotifications(notifs);
+    } catch {
       container.innerHTML = '<div class="no-notifications">Error loading notifications</div>';
-      console.error(error);
     }
   }, 50);
 }
@@ -805,26 +841,15 @@ function closeNotifications() {
   document.getElementById('notificationsPanel').classList.remove('open');
 }
 
-function displayNotifications(notifications) {
+function displayNotifications(notifs) {
   const container = document.getElementById('notificationsContent');
-
-  if (notifications.length === 0) {
-    container.innerHTML = '<div class="no-notifications">No new notifications</div>';
-    return;
-  }
-
+  if (!notifs.length) { container.innerHTML = '<div class="no-notifications">No new notifications</div>'; return; }
   container.innerHTML = '';
-
-  notifications.forEach(function(notif) {
+  notifs.forEach(notif => {
     const item = document.createElement('div');
     item.className = 'notification-item unread';
-    item.onclick = function() { markAsRead(notif.notifId); };
-
-    item.innerHTML = `
-      <div class="notification-message">${escapeHtml(notif.message)}</div>
-      <div class="notification-time">${escapeHtml(notif.createdAt)}</div>
-    `;
-
+    item.onclick = () => markAsRead(notif.notifId);
+    item.innerHTML = `<div class="notification-message">${escapeHtml(notif.message)}</div><div class="notification-time">${escapeHtml(notif.createdAt)}</div>`;
     container.appendChild(item);
   });
 }
@@ -832,73 +857,69 @@ function displayNotifications(notifications) {
 async function markAsRead(notifId) {
   try {
     await apiCall('markNotificationAsRead', { notifId });
-    loadNotifications();
-    showNotifications();
-  } catch (error) {
-    console.error('Error marking notification as read:', error);
-  }
+    loadNotifications(); showNotifications();
+  } catch {}
 }
 
-// ============================================
-// MENU FUNCTIONS
-// ============================================
+// ── MENU ──────────────────────────────────────────────────────────────────────
 function toggleMenu() {
-  const menu = document.getElementById('sideMenu');
-  const menuIcon = document.getElementById('menuIcon');
+  const menu      = document.getElementById('sideMenu');
+  const menuIcon  = document.getElementById('menuIcon');
   const closeIcon = document.getElementById('closeIcon');
   menu.classList.toggle('open');
-  if (menu.classList.contains('open')) {
-    menuIcon.style.display = 'none';
-    closeIcon.style.display = 'block';
-  } else {
-    menuIcon.style.display = 'block';
-    closeIcon.style.display = 'none';
+  menuIcon.style.display  = menu.classList.contains('open') ? 'none'  : 'block';
+  closeIcon.style.display = menu.classList.contains('open') ? 'block' : 'none';
+}
+
+function closeMenu() {
+  const menu      = document.getElementById('sideMenu');
+  const menuIcon  = document.getElementById('menuIcon');
+  const closeIcon = document.getElementById('closeIcon');
+  menu.classList.remove('open');
+  menuIcon.style.display  = 'block';
+  closeIcon.style.display = 'none';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  let toast = document.getElementById('toastEl');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toastEl';
+    document.body.appendChild(toast);
   }
+  toast.textContent = msg;
+  toast.className = `toast toast-${type} show`;
+  setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
-function showSettings() {
-  alert('Settings feature coming soon!');
-  toggleMenu();
-}
-
-function showAbout() {
-  alert('Company Links Portal v2.0\n\nSecure access to company resources with Data Request Management.');
-  toggleMenu();
-}
-
-function logout() {
-  if (confirm('Are you sure you want to logout?')) {
-    localStorage.removeItem('currentUser');
-    sessionStorage.clear();
-    currentUser = null;
-    if (notificationSyncInterval) clearInterval(notificationSyncInterval);
-    showScreen('loginScreen');
-    toggleMenu();
-  }
-}
-
-// ============================================
-// PWA FUNCTIONS
-// ============================================
+// ── PWA ───────────────────────────────────────────────────────────────────────
 function installApp() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(function(choiceResult) {
-      if (choiceResult.outcome === 'accepted') dismissInstall();
-      deferredPrompt = null;
-    });
+    deferredPrompt.userChoice.then(r => { if (r.outcome === 'accepted') dismissInstall(); deferredPrompt = null; });
   } else {
-    alert('To install:\n1. Open browser menu\n2. Select "Add to Home screen"\n3. Tap "Add"');
+    alert('To install:\n1. Open browser menu (⋮)\n2. Select "Add to Home screen"\n3. Tap "Add"');
   }
 }
+function dismissInstall() { document.getElementById('installPrompt').classList.remove('show'); }
 
-function dismissInstall() {
-  document.getElementById('installPrompt').classList.remove('show');
+// ── SETTINGS / ABOUT ─────────────────────────────────────────────────────────
+function showSettings() { closeMenu(); showToast('Settings coming soon! 🚀', 'info'); }
+function showAbout()    { closeMenu(); alert('THORE India Portal v2.0\nSecure access to company resources.'); }
+
+// ── LOGOUT ────────────────────────────────────────────────────────────────────
+function logout() {
+  if (!confirm('Are you sure you want to logout?')) return;
+  localStorage.removeItem('currentUser');
+  sessionStorage.clear();
+  currentUser = null;
+  if (notificationSyncInterval) clearInterval(notificationSyncInterval);
+  closeMenu();
+  showScreen('loginScreen');
 }
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
+// ── UTILS ─────────────────────────────────────────────────────────────────────
 function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
@@ -906,14 +927,9 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-window.addEventListener('offline', () => { showScreen('offlineScreen'); });
-window.addEventListener('online', () => { location.reload(); });
+window.addEventListener('offline', () => showScreen('offlineScreen'));
+window.addEventListener('online',  () => location.reload());
 
 let startY = 0;
-document.addEventListener('touchstart', e => {
-  if (window.scrollY === 0) startY = e.touches[0].clientY;
-});
-document.addEventListener('touchend', e => {
-  const endY = e.changedTouches[0].clientY;
-  if (window.scrollY === 0 && endY - startY > 140) loadLinks();
-});
+document.addEventListener('touchstart', e => { if (window.scrollY === 0) startY = e.touches[0].clientY; });
+document.addEventListener('touchend',   e => { const endY = e.changedTouches[0].clientY; if (window.scrollY === 0 && endY - startY > 140) loadLinks(); });
