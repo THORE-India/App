@@ -1,34 +1,50 @@
-// ============================================
-// THORE INDIA PORTAL — script.js v2.0
-// ============================================
+// ============================================================
+// THORE INDIA PORTAL — script.js v3.0
+// Dual-API architecture: Main Sheet + Sensitive Sheet
+// ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbw2XDf03HVFPIILNHNZe_RJe4drUhHndLf-5zZS69E56s9ks-_mpYJ849_I0mccjoByhA/exec';
+// ── API ENDPOINTS ────────────────────────────────────────────
+// Main sheet handles: Links, Announcements, DataRequests, Notifications
+const MAIN_API_URL = 'https://script.google.com/macros/s/AKfycbw2XDf03HVFPIILNHNZe_RJe4drUhHndLf-5zZS69E56s9ks-_mpYJ849_I0mccjoByhA/exec';
 
-// ── GLOBALS ──────────────────────────────────────────────────────────────────
+// Sensitive sheet handles: Auth, Users, Incentives, Payslips, FCMTokens, Registration
+// IMPORTANT: Replace this with your NEW sensitive sheet deployment URL
+const SENSITIVE_API_URL = 'https://script.google.com/macros/s/AKfycbwlyFZlsszFP-poaAu2cyZ7qdFouT14r7njYFDpsJRZQTw76ztsJYxcAD248yEnil4gUQ/exec';
+const SENSITIVE_API_KEY = 'g7Kx4Qp9Zt2Lm8Vd3Rj5Hy6Nc1WsFa0B'; // Must match the key in sensitive-sheet-api.gs
+
+// ── GLOBALS ──────────────────────────────────────────────────
 let currentUser = null;
 let deferredPrompt;
 let notificationSyncInterval;
 
-// ── API HELPER ────────────────────────────────────────────────────────────────
+// ── API HELPERS ───────────────────────────────────────────────
 async function apiCall(action, params = {}) {
+  return _apiPost(MAIN_API_URL, action, params);
+}
+
+async function secureApiCall(action, params = {}) {
+  return _apiPost(SENSITIVE_API_URL, action, { ...params, apiKey: SENSITIVE_API_KEY });
+}
+
+async function _apiPost(url, action, params) {
   try {
     const payload = { action, ...params };
     const body = Object.keys(payload)
       .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]))
       .join('&');
-    const res = await fetch(API_URL, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body
     });
     return await res.json();
   } catch (err) {
-    console.error('API error:', err);
+    console.error(`API error [${action}]:`, err);
     throw err;
   }
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('load', () => {
   setTimeout(checkAuth, 2000);
 
@@ -50,13 +66,13 @@ window.addEventListener('load', () => {
   }
 });
 
-// ── SCREEN MANAGER ────────────────────────────────────────────────────────────
+// ── SCREEN MANAGER ────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  document.getElementById(id)?.classList.add('active');
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────────────────
+// ── AUTH ──────────────────────────────────────────────────────
 function checkAuth() {
   const saved = localStorage.getItem('currentUser');
   if (saved) {
@@ -70,6 +86,7 @@ function checkAuth() {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loginForm')?.addEventListener('submit', e => { e.preventDefault(); handleLogin(); });
   document.getElementById('dataRequestForm')?.addEventListener('submit', e => { e.preventDefault(); handleDataRequestSubmit(); });
+  document.getElementById('registerForm')?.addEventListener('submit', e => { e.preventDefault(); handleRegisterSubmit(); });
 });
 
 async function handleLogin() {
@@ -86,7 +103,8 @@ async function handleLogin() {
   btnLoad.style.display = 'inline-flex';
 
   try {
-    const result = await apiCall('validateLogin', { email, password });
+    // Auth lives in the SENSITIVE sheet
+    const result = await secureApiCall('validateLogin', { email, password });
     btn.disabled = false;
     btnText.style.display = 'inline';
     btnLoad.style.display = 'none';
@@ -109,7 +127,7 @@ async function handleLogin() {
   }
 }
 
-// ── FCM ───────────────────────────────────────────────────────────────────────
+// ── FCM ───────────────────────────────────────────────────────
 async function registerFCMToken(userEmail) {
   try {
     const permission = await Notification.requestPermission();
@@ -123,14 +141,15 @@ async function registerFCMToken(userEmail) {
 
     const token = await window.firebaseRequestToken();
     if (token) {
-      await apiCall('saveFCMToken', { userEmail, fcmToken: token });
+      // FCM tokens go to the SENSITIVE sheet
+      await secureApiCall('saveFCMToken', { userEmail, fcmToken: token });
     }
   } catch (err) {
     console.error('FCM token registration failed:', err);
   }
 }
 
-// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────────
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────
 async function checkForAnnouncement() {
   try {
     const ann = await apiCall('getActiveAnnouncement');
@@ -167,7 +186,7 @@ async function showAnnouncements() {
   } catch { alert('Error loading announcements.'); }
 }
 
-// ── MAIN APP ──────────────────────────────────────────────────────────────────
+// ── MAIN APP ──────────────────────────────────────────────────
 function showMainApp() {
   updateUserInfo();
   showScreen('mainScreen');
@@ -179,7 +198,7 @@ function showMainApp() {
   notificationSyncInterval = setInterval(loadNotifications, 5 * 60 * 1000);
 
   if (!window.matchMedia('(display-mode: standalone)').matches) {
-    setTimeout(() => document.getElementById('installPrompt').classList.add('show'), 2000);
+    setTimeout(() => document.getElementById('installPrompt')?.classList.add('show'), 2000);
   }
 }
 
@@ -190,9 +209,11 @@ function updateUserInfo() {
   document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
   document.getElementById('reqUserName').textContent = currentUser.name;
   document.getElementById('reqUserRole').textContent = currentUser.role;
-  // Show role badge
   const roleBadge = document.getElementById('userRoleBadge');
   if (roleBadge) roleBadge.textContent = currentUser.role;
+  // Greeting
+  const greetEl = document.getElementById('greetingName');
+  if (greetEl) greetEl.textContent = currentUser.name ? currentUser.name.split(' ')[0] : '';
   updateDateTime();
 }
 
@@ -203,7 +224,7 @@ function updateDateTime() {
   if (el) el.textContent = now.toLocaleString('en-IN', opts);
 }
 
-// ── ROLE HELPERS ──────────────────────────────────────────────────────────────
+// ── ROLE HELPERS ──────────────────────────────────────────────
 function getRoleTier(role) {
   const r = (role || '').toLowerCase().trim();
   if (r === 'executive' || r === 'sales executive') return 1;
@@ -217,11 +238,11 @@ function canSeeTeam() {
   return currentUser && getRoleTier(currentUser.role) >= 2;
 }
 
-// ── OPERATIONS CHECK ──────────────────────────────────────────────────────────
+// ── OPERATIONS CHECK ──────────────────────────────────────────
 async function checkIfOperationsTeam() {
   if (!currentUser) return;
   try {
-    const result = await apiCall('isOperationsTeam', { userEmail: currentUser.email });
+    const result = await secureApiCall('isOperationsTeam', { userEmail: currentUser.email });
     if (result.isOperationsTeam) {
       document.getElementById('opsMenuBtn').style.display = 'flex';
     }
@@ -235,18 +256,26 @@ async function checkTeamAccess() {
   }
 }
 
-// ── DASHBOARD STATS ───────────────────────────────────────────────────────────
+// ── DASHBOARD STATS ───────────────────────────────────────────
 async function loadDashboardStats() {
   if (!currentUser) return;
   try {
-    const stats = await apiCall('getDashboardStats', { userEmail: currentUser.email });
-    if (stats.success) {
-      const t = stats.incentiveTotals || {};
+    // Incentive data from SENSITIVE API; request counts from MAIN API
+    const [sensitiveStats, requests] = await Promise.all([
+      secureApiCall('getDashboardStats', { userEmail: currentUser.email }),
+      apiCall('getUserRequests', { userEmail: currentUser.email })
+    ]);
+
+    if (sensitiveStats.success) {
+      const t = sensitiveStats.incentiveTotals || {};
       setEl('dashIncentiveGenerated', '₹' + formatNum(t.generated || 0));
       setEl('dashIncentivePaid',      '₹' + formatNum(t.paid || 0));
       setEl('dashIncentivePending',   '₹' + formatNum(t.pending || 0));
-      setEl('dashPendingReq',  stats.pendingRequests || 0);
-      setEl('dashTotalReq',    stats.totalRequests   || 0);
+    }
+
+    if (Array.isArray(requests)) {
+      const pending = requests.filter(r => r.status === 'Pending').length;
+      setEl('dashPendingReq', pending + ' pending');
     }
   } catch (err) {
     console.error('Dashboard stats error:', err);
@@ -262,24 +291,26 @@ function setEl(id, val) {
   if (el) el.textContent = val;
 }
 
-// ── LINKS ─────────────────────────────────────────────────────────────────────
+// ── LINKS ─────────────────────────────────────────────────────
 async function loadLinks() {
   if (!currentUser) return;
-  document.getElementById('loadingSpinner')?.classList.remove('hide');
-  document.getElementById('linksContainer').innerHTML = '';
+  const spinner   = document.getElementById('loadingSpinner');
+  const container = document.getElementById('linksContainer');
+  if (spinner) spinner.classList.add('show');
+  container.innerHTML = '';
 
   try {
-    const links = await apiCall('getLinksForUser', { userEmail: currentUser.email });
+    // Links only need the user's ROLE, not any sensitive data
+    const links = await apiCall('getLinksForUser', { userRole: currentUser.role });
+    if (spinner) spinner.classList.remove('show');
     displayLinks(links);
   } catch (err) {
-    document.getElementById('loadingSpinner')?.classList.add('hide');
-    document.getElementById('linksContainer').innerHTML =
-      '<div class="empty-state">Error loading links. Please refresh.</div>';
+    if (spinner) spinner.classList.remove('show');
+    container.innerHTML = '<div class="empty-state">Error loading links. Please refresh.</div>';
   }
 }
 
 function displayLinks(links) {
-  document.getElementById('loadingSpinner')?.classList.add('hide');
   const container = document.getElementById('linksContainer');
 
   if (!links || links.length === 0) {
@@ -311,9 +342,9 @@ function displayLinks(links) {
   });
 }
 
-// ── SEARCH ────────────────────────────────────────────────────────────────────
+// ── SEARCH ────────────────────────────────────────────────────
 function toggleSearch() {
-  const bar = document.getElementById('searchBar');
+  const bar   = document.getElementById('searchBar');
   const input = document.getElementById('globalSearch');
   bar.classList.toggle('search-bar-open');
   if (bar.classList.contains('search-bar-open')) {
@@ -336,7 +367,7 @@ function openLink(url) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// ── VIEW NAVIGATION ───────────────────────────────────────────────────────────
+// ── VIEW NAVIGATION ───────────────────────────────────────────
 const VIEWS = ['linksView','dataRequestView','myRequestsView','operationsView','teamView','incentiveView','payslipView','profileView'];
 
 function showView(id) {
@@ -346,14 +377,14 @@ function showView(id) {
   });
 }
 
-function showLinksView()         { showView('linksView');        closeMenu(); loadDashboardStats(); }
-function showDataRequestPortal() { showView('dataRequestView');  closeMenu(); updateDateTime(); resetRequestForm(); }
-function showMyRequests()        { showView('myRequestsView');   closeMenu(); setTimeout(loadMyRequests, 50); }
-function showOperationsPanel()   { showView('operationsView');   closeMenu(); loadOperationsPanel(); }
-function showTeamView()          { showView('teamView');         closeMenu(); loadTeamView(); }
-function showIncentiveView()     { showView('incentiveView');    closeMenu(); loadIncentiveView(); }
-function showPayslipView()       { showView('payslipView');      closeMenu(); loadPayslips(); }
-function showProfileView()       { showView('profileView');      closeMenu(); loadProfile(); }
+function showLinksView()         { showView('linksView');       closeMenu(); loadDashboardStats(); }
+function showDataRequestPortal() { showView('dataRequestView'); closeMenu(); updateDateTime(); resetRequestForm(); }
+function showMyRequests()        { showView('myRequestsView');  closeMenu(); setTimeout(loadMyRequests, 50); }
+function showOperationsPanel()   { showView('operationsView');  closeMenu(); loadOperationsPanel(); }
+function showTeamView()          { showView('teamView');        closeMenu(); loadTeamView(); }
+function showIncentiveView()     { showView('incentiveView');   closeMenu(); loadIncentiveView(); }
+function showPayslipView()       { showView('payslipView');     closeMenu(); loadPayslips(); }
+function showProfileView()       { showView('profileView');     closeMenu(); loadProfile(); }
 function showAttendanceView()    { closeMenu(); showToast('Attendance feature coming soon! 🚀', 'info'); }
 
 function resetRequestForm() {
@@ -362,14 +393,14 @@ function resetRequestForm() {
   document.getElementById('requestSuccess').classList.remove('show');
 }
 
-// ── DATA REQUEST ──────────────────────────────────────────────────────────────
+// ── DATA REQUEST ──────────────────────────────────────────────
 async function handleDataRequestSubmit() {
-  const remarks   = document.getElementById('remarks').value.trim();
-  const errorDiv  = document.getElementById('requestError');
-  const successDiv= document.getElementById('requestSuccess');
-  const btn       = document.getElementById('submitRequestBtn');
-  const btnText   = document.getElementById('submitBtnText');
-  const btnLoad   = document.getElementById('submitBtnLoader');
+  const remarks    = document.getElementById('remarks').value.trim();
+  const errorDiv   = document.getElementById('requestError');
+  const successDiv = document.getElementById('requestSuccess');
+  const btn        = document.getElementById('submitRequestBtn');
+  const btnText    = document.getElementById('submitBtnText');
+  const btnLoad    = document.getElementById('submitBtnLoader');
 
   if (!remarks) { errorDiv.textContent = 'Please enter request details'; errorDiv.classList.add('show'); return; }
 
@@ -397,7 +428,7 @@ async function handleDataRequestSubmit() {
   }
 }
 
-// ── MY REQUESTS ───────────────────────────────────────────────────────────────
+// ── MY REQUESTS ───────────────────────────────────────────────
 async function loadMyRequests() {
   if (!currentUser) return;
   const loading   = document.getElementById('myRequestsLoading');
@@ -444,12 +475,12 @@ function displayMyRequests(requests) {
   });
 }
 
-// ── OPERATIONS PANEL ──────────────────────────────────────────────────────────
+// ── OPERATIONS PANEL ──────────────────────────────────────────
 async function loadOperationsPanel() {
   document.getElementById('operationsLoading').classList.remove('hide');
   document.getElementById('operationsContainer').innerHTML = '';
   try {
-    const stats = await apiCall('getOperationsStats');
+    const stats    = await apiCall('getOperationsStats');
     displayOperationsStats(stats);
     const requests = await apiCall('getAllPendingRequests');
     document.getElementById('operationsLoading').classList.add('hide');
@@ -520,14 +551,14 @@ async function rejectRequest(id) {
   else alert('Error: ' + r.message);
 }
 
-// ── TEAM VIEW ─────────────────────────────────────────────────────────────────
+// ── TEAM VIEW ─────────────────────────────────────────────────
 async function loadTeamView() {
   if (!currentUser) return;
   const container = document.getElementById('teamContainer');
   container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading team...</p></div>`;
 
   try {
-    const result = await apiCall('getTeamForUser', { userEmail: currentUser.email });
+    const result = await secureApiCall('getTeamForUser', { userEmail: currentUser.email });
     if (!result.success) { container.innerHTML = '<div class="empty-state">Error loading team.</div>'; return; }
     displayTeam(result.team);
   } catch {
@@ -550,7 +581,7 @@ function displayTeam(team) {
   team.forEach(member => {
     const card = document.createElement('div');
     card.className = 'team-card';
-    const t = tier(member.role);
+    const t     = tier(member.role);
     const color = roleColor[t] || '#94a3b8';
     card.innerHTML = `
       <div class="team-card-left">
@@ -574,7 +605,7 @@ function displayTeam(team) {
   });
 }
 
-// ── INCENTIVE VIEW ────────────────────────────────────────────────────────────
+// ── INCENTIVE VIEW ────────────────────────────────────────────
 async function loadIncentiveView() {
   if (!currentUser) return;
   const mySection   = document.getElementById('myIncentiveSection');
@@ -584,12 +615,12 @@ async function loadIncentiveView() {
   teamSection.innerHTML = '';
 
   try {
-    const myData = await apiCall('getMyIncentives', { userEmail: currentUser.email });
+    const myData = await secureApiCall('getMyIncentives', { userEmail: currentUser.email });
     displayMyIncentives(myData);
 
     if (canSeeTeam()) {
       teamSection.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
-      const teamData = await apiCall('getTeamIncentives', { userEmail: currentUser.email });
+      const teamData = await secureApiCall('getTeamIncentives', { userEmail: currentUser.email });
       displayTeamIncentives(teamData);
     }
   } catch (err) {
@@ -621,7 +652,7 @@ function displayMyIncentives(data) {
   if (data.incentives && data.incentives.length) {
     html += '<div class="incentive-list">';
     data.incentives.forEach(inc => {
-      const sc = inc.status === 'Paid' ? 'status-completed' : inc.status === 'Pending' ? 'status-pending' : 'status-pending';
+      const sc = inc.status === 'Paid' ? 'status-completed' : 'status-pending';
       html += `
         <div class="incentive-row">
           <div class="incentive-row-left">
@@ -675,14 +706,14 @@ function displayTeamIncentives(data) {
   section.innerHTML = html;
 }
 
-// ── PAYSLIP VIEW ──────────────────────────────────────────────────────────────
+// ── PAYSLIP VIEW ──────────────────────────────────────────────
 async function loadPayslips() {
   if (!currentUser) return;
   const container = document.getElementById('payslipContainer');
   container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading payslips...</p></div>`;
 
   try {
-    const result = await apiCall('getPayslips', { userEmail: currentUser.email });
+    const result = await secureApiCall('getPayslips', { userEmail: currentUser.email });
     if (!result.success) { container.innerHTML = '<div class="empty-state">Error loading payslips.</div>'; return; }
 
     if (!result.payslips.length) {
@@ -690,7 +721,6 @@ async function loadPayslips() {
       return;
     }
 
-    // Group by year
     const byYear = {};
     result.payslips.forEach(p => {
       const yr = p.year || '—';
@@ -723,14 +753,14 @@ async function loadPayslips() {
   }
 }
 
-// ── PROFILE VIEW ──────────────────────────────────────────────────────────────
+// ── PROFILE VIEW ──────────────────────────────────────────────
 async function loadProfile() {
   if (!currentUser) return;
   const container = document.getElementById('profileContainer');
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
-    const result = await apiCall('getUserProfile', { userEmail: currentUser.email });
+    const result = await secureApiCall('getUserProfile', { userEmail: currentUser.email });
     if (!result.success) { container.innerHTML = '<div class="empty-state">Error loading profile.</div>'; return; }
     displayProfile(result.profile);
   } catch {
@@ -792,7 +822,7 @@ async function handleChangePassword() {
   if (newPw !== confirm) { errDiv.textContent = 'Passwords do not match.'; errDiv.classList.add('show'); return; }
 
   try {
-    const result = await apiCall('changePassword', { userEmail: currentUser.email, oldPassword: old, newPassword: newPw });
+    const result = await secureApiCall('changePassword', { userEmail: currentUser.email, oldPassword: old, newPassword: newPw });
     if (result.success) {
       sucDiv.textContent = '✓ Password changed successfully!'; sucDiv.classList.add('show');
       document.getElementById('oldPassword').value = '';
@@ -806,7 +836,7 @@ async function handleChangePassword() {
   }
 }
 
-// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+// ── NOTIFICATIONS ─────────────────────────────────────────────
 async function loadNotifications() {
   if (!currentUser) return;
   try {
@@ -822,9 +852,9 @@ function updateNotificationBadge(count) {
 }
 
 async function showNotifications() {
-  const panel = document.getElementById('notificationsPanel');
-  panel.classList.add('open');
+  const panel     = document.getElementById('notificationsPanel');
   const container = document.getElementById('notificationsContent');
+  panel.classList.add('open');
   container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
 
   setTimeout(async () => {
@@ -861,7 +891,107 @@ async function markAsRead(notifId) {
   } catch {}
 }
 
-// ── MENU ──────────────────────────────────────────────────────────────────────
+// ── REGISTER ─────────────────────────────────────────────────
+function showRegisterScreen() {
+  showScreen('registerScreen');
+  // Set today's date as max for DOB
+  const dobInput = document.getElementById('reg_dateOfBirth');
+  if (dobInput) {
+    const today = new Date();
+    const yyyy  = today.getFullYear() - 18; // Must be 18+
+    const mm    = String(today.getMonth() + 1).padStart(2, '0');
+    const dd    = String(today.getDate()).padStart(2, '0');
+    dobInput.max = `${yyyy}-${mm}-${dd}`;
+  }
+}
+
+function showLoginFromRegister() {
+  showScreen('loginScreen');
+}
+
+async function handleRegisterSubmit() {
+  const errDiv = document.getElementById('regError');
+  const sucDiv = document.getElementById('regSuccess');
+  const btn    = document.getElementById('regSubmitBtn');
+  const btnTxt = document.getElementById('regBtnText');
+  const btnLdr = document.getElementById('regBtnLoader');
+
+  errDiv.classList.remove('show');
+  sucDiv.classList.remove('show');
+
+  // Collect all fields
+  const fields = {
+    fullName:         document.getElementById('reg_fullName')?.value.trim(),
+    personalEmail:    document.getElementById('reg_personalEmail')?.value.trim(),
+    phone:            document.getElementById('reg_phone')?.value.trim(),
+    altPhone:         document.getElementById('reg_altPhone')?.value.trim(),
+    dateOfBirth:      document.getElementById('reg_dateOfBirth')?.value,
+    gender:           document.getElementById('reg_gender')?.value,
+    address:          document.getElementById('reg_address')?.value.trim(),
+    city:             document.getElementById('reg_city')?.value.trim(),
+    state:            document.getElementById('reg_state')?.value.trim(),
+    pinCode:          document.getElementById('reg_pinCode')?.value.trim(),
+    education:        document.getElementById('reg_education')?.value.trim(),
+    experienceYears:  document.getElementById('reg_experienceYears')?.value.trim(),
+    previousCompany:  document.getElementById('reg_previousCompany')?.value.trim(),
+    positionApplied:  document.getElementById('reg_positionApplied')?.value,
+    linkedin:         document.getElementById('reg_linkedin')?.value.trim(),
+    referredBy:       document.getElementById('reg_referredBy')?.value.trim(),
+    emergencyContact: document.getElementById('reg_emergencyContact')?.value.trim(),
+    emergencyPhone:   document.getElementById('reg_emergencyPhone')?.value.trim(),
+    aadhar:           document.getElementById('reg_aadhar')?.value.trim(),
+    pan:              document.getElementById('reg_pan')?.value.trim(),
+    bankAccount:      document.getElementById('reg_bankAccount')?.value.trim(),
+    bankIFSC:         document.getElementById('reg_bankIFSC')?.value.trim(),
+    bankName:         document.getElementById('reg_bankName')?.value.trim()
+  };
+
+  // Client-side required check
+  const required = ['fullName','personalEmail','phone','dateOfBirth','gender','address','city','state','pinCode','positionApplied'];
+  for (const f of required) {
+    if (!fields[f]) {
+      errDiv.textContent = 'Please fill in all required fields.';
+      errDiv.classList.add('show');
+      return;
+    }
+  }
+
+  // Terms checkbox
+  const terms = document.getElementById('reg_terms');
+  if (terms && !terms.checked) {
+    errDiv.textContent = 'Please agree to the terms and conditions.';
+    errDiv.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true; btnTxt.style.display = 'none'; btnLdr.style.display = 'inline-flex';
+
+  try {
+    const result = await secureApiCall('registerNewEmployee', fields);
+    btn.disabled = false; btnTxt.style.display = 'inline'; btnLdr.style.display = 'none';
+
+    if (result.success) {
+      sucDiv.innerHTML = `<strong>🎉 ${escapeHtml(result.message)}</strong>`;
+      sucDiv.classList.add('show');
+      document.getElementById('registerForm').reset();
+      // Show return to login after 5s
+      setTimeout(() => {
+        if (confirm('Registration successful! Go back to Login?')) {
+          showLoginFromRegister();
+        }
+      }, 3000);
+    } else {
+      errDiv.textContent = result.message;
+      errDiv.classList.add('show');
+    }
+  } catch {
+    btn.disabled = false; btnTxt.style.display = 'inline'; btnLdr.style.display = 'none';
+    errDiv.textContent = 'Registration failed. Please check your connection and try again.';
+    errDiv.classList.add('show');
+  }
+}
+
+// ── MENU ──────────────────────────────────────────────────────
 function toggleMenu() {
   const menu      = document.getElementById('sideMenu');
   const menuIcon  = document.getElementById('menuIcon');
@@ -880,7 +1010,7 @@ function closeMenu() {
   closeIcon.style.display = 'none';
 }
 
-// ── TOAST ─────────────────────────────────────────────────────────────────────
+// ── TOAST ─────────────────────────────────────────────────────
 function showToast(msg, type = 'info') {
   let toast = document.getElementById('toastEl');
   if (!toast) {
@@ -893,7 +1023,7 @@ function showToast(msg, type = 'info') {
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
-// ── PWA ───────────────────────────────────────────────────────────────────────
+// ── PWA ───────────────────────────────────────────────────────
 function installApp() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
@@ -902,13 +1032,13 @@ function installApp() {
     alert('To install:\n1. Open browser menu (⋮)\n2. Select "Add to Home screen"\n3. Tap "Add"');
   }
 }
-function dismissInstall() { document.getElementById('installPrompt').classList.remove('show'); }
+function dismissInstall() { document.getElementById('installPrompt')?.classList.remove('show'); }
 
-// ── SETTINGS / ABOUT ─────────────────────────────────────────────────────────
+// ── SETTINGS / ABOUT ─────────────────────────────────────────
 function showSettings() { closeMenu(); showToast('Settings coming soon! 🚀', 'info'); }
-function showAbout()    { closeMenu(); alert('THORE India Portal v2.0\nSecure access to company resources.'); }
+function showAbout()    { closeMenu(); alert('THORE India Portal v3.0\nSecure dual-API architecture.'); }
 
-// ── LOGOUT ────────────────────────────────────────────────────────────────────
+// ── LOGOUT ────────────────────────────────────────────────────
 function logout() {
   if (!confirm('Are you sure you want to logout?')) return;
   localStorage.removeItem('currentUser');
@@ -919,7 +1049,7 @@ function logout() {
   showScreen('loginScreen');
 }
 
-// ── UTILS ─────────────────────────────────────────────────────────────────────
+// ── UTILS ─────────────────────────────────────────────────────
 function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
