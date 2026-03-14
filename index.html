@@ -18,7 +18,7 @@
 <body>
 <div id="app">
 
-  <!-- ── WELCOME ────────────────────────────────────────── -->
+  <!-- ── WELCOME ────────────────────────────────────────────── -->
   <div id="welcomeScreen" class="screen active">
     <div class="welcome-container">
       <div class="logo-img-container" style="margin-bottom:20px;">
@@ -34,7 +34,7 @@
     </div>
   </div>
 
-  <!-- ── LOGIN ──────────────────────────────────────────── -->
+  <!-- ── LOGIN ──────────────────────────────────────────────── -->
   <div id="loginScreen" class="screen">
     <div class="login-container">
       <div class="login-header">
@@ -59,14 +59,225 @@
           <span id="loginBtnLoader" class="btn-loader" style="display:none;"><div class="spinner-small"></div></span>
         </button>
         <div class="login-footer">
-          <button type="button" onclick="alert('New feature coming soon 🚀')" class="btn-register">Register</button>
+          <button type="button" onclick="showRegisterScreen()" class="btn-register">New Joinee? Register Here</button>
         </div>
       </form>
       <div class="login-footer"><p>Use your company email (@thoreindia.com)</p></div>
     </div>
   </div>
 
-  <!-- ── ANNOUNCEMENT ───────────────────────────────────── -->
+  <!-- ── REGISTER ───────────────────────────────────────────── -->
+  <div id="registerScreen" class="screen">
+    <div class="register-container">
+
+      <!-- Header -->
+      <div class="register-header">
+        <button type="button" onclick="showLoginFromRegister()" class="back-btn" style="margin-bottom:16px;">← Back to Login</button>
+        <div class="logo-img-container" style="width:100px;height:56px;margin:0 auto 16px auto;">
+          <img src="https://i.postimg.cc/Zn1FxwGS/Company-Logo-no-background.png" alt="Logo" style="width:100%;height:auto;">
+        </div>
+        <h1>New Employee Registration</h1>
+        <p>Fill in your details to get started with THORE India</p>
+        <div class="register-info-banner">
+          📋 HR will review your application and contact you within 2–3 business days. You'll receive your company login credentials once approved.
+        </div>
+      </div>
+
+      <form id="registerForm" class="register-form">
+
+        <!-- ── SECTION 1: Personal Information ── -->
+        <div class="reg-section">
+          <div class="reg-section-title">👤 Personal Information</div>
+
+          <div class="form-group">
+            <label>Full Name <span class="req">*</span></label>
+            <input type="text" id="reg_fullName" class="form-input" placeholder="As per Aadhar / Government ID" required>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>Personal Email <span class="req">*</span></label>
+              <input type="email" id="reg_personalEmail" class="form-input" placeholder="your@gmail.com" required>
+              <small class="form-hint">Not your company email</small>
+            </div>
+            <div class="form-group">
+              <label>Mobile Number <span class="req">*</span></label>
+              <input type="tel" id="reg_phone" class="form-input" placeholder="10-digit number" maxlength="10" required>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>Alternate Phone</label>
+              <input type="tel" id="reg_altPhone" class="form-input" placeholder="Optional" maxlength="10">
+            </div>
+            <div class="form-group">
+              <label>Date of Birth <span class="req">*</span></label>
+              <input type="date" id="reg_dateOfBirth" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Gender <span class="req">*</span></label>
+            <select id="reg_gender" class="form-input form-select" required>
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+              <option value="Prefer not to say">Prefer not to say</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Residential Address <span class="req">*</span></label>
+            <textarea id="reg_address" class="form-textarea" rows="2" placeholder="House/Flat No., Street, Landmark" required></textarea>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>City <span class="req">*</span></label>
+              <input type="text" id="reg_city" class="form-input" placeholder="City" required>
+            </div>
+            <div class="form-group">
+              <label>State <span class="req">*</span></label>
+              <input type="text" id="reg_state" class="form-input" placeholder="State" required>
+            </div>
+            <div class="form-group">
+              <label>PIN Code <span class="req">*</span></label>
+              <input type="text" id="reg_pinCode" class="form-input" placeholder="6-digit PIN" maxlength="6" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECTION 2: Professional Information ── -->
+        <div class="reg-section">
+          <div class="reg-section-title">💼 Professional Information</div>
+
+          <div class="form-group">
+            <label>Position Applied For <span class="req">*</span></label>
+            <select id="reg_positionApplied" class="form-input form-select" required>
+              <option value="">Select position</option>
+              <option value="Sales Executive">Sales Executive</option>
+              <option value="Team Leader">Team Leader</option>
+              <option value="Operations Executive">Operations Executive</option>
+              <option value="Marketing Executive">Marketing Executive</option>
+              <option value="HR Executive">HR Executive</option>
+              <option value="Account Manager">Account Manager</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>Highest Education</label>
+              <input type="text" id="reg_education" class="form-input" placeholder="e.g. B.Com, MBA, 12th">
+            </div>
+            <div class="form-group">
+              <label>Work Experience (Years)</label>
+              <input type="number" id="reg_experienceYears" class="form-input" placeholder="0" min="0" max="50" value="0">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Previous Company</label>
+            <input type="text" id="reg_previousCompany" class="form-input" placeholder="Leave blank if fresher">
+          </div>
+
+          <div class="form-group">
+            <label>LinkedIn Profile</label>
+            <input type="url" id="reg_linkedin" class="form-input" placeholder="https://linkedin.com/in/yourprofile">
+          </div>
+
+          <div class="form-group">
+            <label>Referred By</label>
+            <input type="text" id="reg_referredBy" class="form-input" placeholder="Name of employee who referred you (if any)">
+          </div>
+        </div>
+
+        <!-- ── SECTION 3: Emergency Contact ── -->
+        <div class="reg-section">
+          <div class="reg-section-title">🆘 Emergency Contact</div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>Contact Name</label>
+              <input type="text" id="reg_emergencyContact" class="form-input" placeholder="Parent / Spouse name">
+            </div>
+            <div class="form-group">
+              <label>Contact Phone</label>
+              <input type="tel" id="reg_emergencyPhone" class="form-input" placeholder="10-digit number" maxlength="10">
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECTION 4: Government IDs ── -->
+        <div class="reg-section">
+          <div class="reg-section-title">🪪 Government IDs</div>
+          <div class="reg-privacy-note">
+            🔒 This information is encrypted and stored securely. Accessible only to authorised HR personnel.
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>Aadhar Number</label>
+              <input type="text" id="reg_aadhar" class="form-input" placeholder="12-digit Aadhar" maxlength="12">
+            </div>
+            <div class="form-group">
+              <label>PAN Number</label>
+              <input type="text" id="reg_pan" class="form-input" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform:uppercase;">
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECTION 5: Bank Details ── -->
+        <div class="reg-section">
+          <div class="reg-section-title">🏦 Bank Details</div>
+          <div class="reg-privacy-note">
+            🔒 Required for salary processing. Stored securely and only shared with Finance team.
+          </div>
+
+          <div class="form-group">
+            <label>Bank Account Number</label>
+            <input type="text" id="reg_bankAccount" class="form-input" placeholder="Account number">
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>IFSC Code</label>
+              <input type="text" id="reg_bankIFSC" class="form-input" placeholder="e.g. SBIN0001234" maxlength="11" style="text-transform:uppercase;">
+            </div>
+            <div class="form-group">
+              <label>Bank Name</label>
+              <input type="text" id="reg_bankName" class="form-input" placeholder="e.g. SBI, HDFC">
+            </div>
+          </div>
+        </div>
+
+        <!-- Terms -->
+        <div class="reg-terms-wrap">
+          <label class="reg-terms-label">
+            <input type="checkbox" id="reg_terms" class="reg-checkbox">
+            <span>I confirm that all information provided is accurate and I agree to THORE India's terms of employment. I understand that false information may lead to rejection of my application.</span>
+          </label>
+        </div>
+
+        <div id="regError" class="error-message"></div>
+        <div id="regSuccess" class="success-message"></div>
+
+        <button type="submit" id="regSubmitBtn" class="btn-primary" style="margin-top:8px;">
+          <span id="regBtnText">Submit Registration</span>
+          <span id="regBtnLoader" class="btn-loader" style="display:none;"><div class="spinner-small"></div></span>
+        </button>
+
+        <div style="text-align:center;margin-top:16px;">
+          <button type="button" onclick="showLoginFromRegister()" class="btn-register">Already registered? Sign In</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ── ANNOUNCEMENT ───────────────────────────────────────── -->
   <div id="announcementScreen" class="screen">
     <div class="announcement-container">
       <div id="announcementContent"></div>
@@ -74,7 +285,7 @@
     </div>
   </div>
 
-  <!-- ── MAIN APP ───────────────────────────────────────── -->
+  <!-- ── MAIN APP ───────────────────────────────────────────── -->
   <div id="mainScreen" class="screen">
 
     <!-- HEADER -->
@@ -188,21 +399,16 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════
-         VIEWS
-    ══════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════ VIEWS -->
 
     <!-- HOME VIEW -->
     <main class="main-content" id="linksView">
-      <!-- Greeting -->
       <div class="home-greeting">
         <div>
           <div class="greeting-sub">Good day,</div>
           <div class="greeting-name" id="greetingName"></div>
         </div>
       </div>
-
-      <!-- Dashboard Cards -->
       <div class="dash-grid">
         <div class="dash-card dash-card-request" onclick="showDataRequestPortal()">
           <div class="dash-card-icon">📤</div>
@@ -229,8 +435,6 @@
           <div class="dash-card-arrow">→</div>
         </div>
       </div>
-
-      <!-- Quick Links Section -->
       <div class="section-header">
         <div class="section-title-main">Quick Links</div>
         <div id="loadingSpinner" class="spinner-inline"></div>
@@ -276,8 +480,7 @@
     <main class="main-content" id="myRequestsView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>My Requests</h1>
-        <p>Track your data requests</p>
+        <h1>My Requests</h1><p>Track your data requests</p>
       </div>
       <div id="myRequestsLoading" class="loading"><div class="spinner"></div><p>Loading...</p></div>
       <div id="myRequestsContainer"></div>
@@ -287,8 +490,7 @@
     <main class="main-content" id="operationsView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>Operations Panel</h1>
-        <p>Manage data requests</p>
+        <h1>Operations Panel</h1><p>Manage data requests</p>
       </div>
       <div id="operationsStatsContainer" class="stats-container"></div>
       <div id="operationsLoading" class="loading"><div class="spinner"></div><p>Loading...</p></div>
@@ -299,8 +501,7 @@
     <main class="main-content" id="teamView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>Manage Team</h1>
-        <p>Your team members</p>
+        <h1>Manage Team</h1><p>Your team members</p>
       </div>
       <div id="teamContainer"></div>
     </main>
@@ -309,8 +510,7 @@
     <main class="main-content" id="incentiveView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>Incentives</h1>
-        <p>Your earnings summary</p>
+        <h1>Incentives</h1><p>Your earnings summary</p>
       </div>
       <div class="section-title" style="margin-bottom:12px;">My Incentives</div>
       <div id="myIncentiveSection"></div>
@@ -321,8 +521,7 @@
     <main class="main-content" id="payslipView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>PaySlip</h1>
-        <p>Monthly salary & tax slips</p>
+        <h1>PaySlip</h1><p>Monthly salary & tax slips</p>
       </div>
       <div id="payslipContainer"></div>
     </main>
@@ -331,8 +530,7 @@
     <main class="main-content" id="profileView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>Profile</h1>
-        <p>Your account information</p>
+        <h1>Profile</h1><p>Your account information</p>
       </div>
       <div id="profileContainer"></div>
     </main>
@@ -360,33 +558,7 @@
 
 </div><!-- /app -->
 
-<script>
-  // Set greeting name once DOM loads
-  document.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem('currentUser');
-    if (saved) {
-      const u = JSON.parse(saved);
-      const el = document.getElementById('greetingName');
-      if (el) el.textContent = u.name ? u.name.split(' ')[0] : '';
-    }
-  });
-
-  // Update greeting after login too
-  const _origUpdateUserInfo = window.updateUserInfo;
-</script>
-
 <script src="script.js"></script>
-
-<script>
-  // Patch greeting update after login
-  const _patchGreeting = () => {
-    if (window.currentUser) {
-      const el = document.getElementById('greetingName');
-      if (el) el.textContent = window.currentUser.name ? window.currentUser.name.split(' ')[0] : '';
-    }
-  };
-  document.addEventListener('userLoggedIn', _patchGreeting);
-</script>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
