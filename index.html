@@ -69,8 +69,6 @@
   <!-- ── REGISTER ───────────────────────────────────────────── -->
   <div id="registerScreen" class="screen">
     <div class="register-container">
-
-      <!-- Header -->
       <div class="register-header">
         <button type="button" onclick="showLoginFromRegister()" class="back-btn" style="margin-bottom:16px;">← Back to Login</button>
         <div class="logo-img-container" style="width:100px;height:56px;margin:0 auto 16px auto;">
@@ -84,16 +82,12 @@
       </div>
 
       <form id="registerForm" class="register-form">
-
-        <!-- ── SECTION 1: Personal Information ── -->
         <div class="reg-section">
           <div class="reg-section-title">👤 Personal Information</div>
-
           <div class="form-group">
             <label>Full Name <span class="req">*</span></label>
             <input type="text" id="reg_fullName" class="form-input" placeholder="As per Aadhar / Government ID" required>
           </div>
-
           <div class="form-row-2">
             <div class="form-group">
               <label>Personal Email <span class="req">*</span></label>
@@ -105,7 +99,6 @@
               <input type="tel" id="reg_phone" class="form-input" placeholder="10-digit number" maxlength="10" required>
             </div>
           </div>
-
           <div class="form-row-2">
             <div class="form-group">
               <label>Alternate Phone</label>
@@ -116,7 +109,6 @@
               <input type="date" id="reg_dateOfBirth" class="form-input" required>
             </div>
           </div>
-
           <div class="form-group">
             <label>Gender <span class="req">*</span></label>
             <select id="reg_gender" class="form-input form-select" required>
@@ -127,12 +119,10 @@
               <option value="Prefer not to say">Prefer not to say</option>
             </select>
           </div>
-
           <div class="form-group">
             <label>Residential Address <span class="req">*</span></label>
             <textarea id="reg_address" class="form-textarea" rows="2" placeholder="House/Flat No., Street, Landmark" required></textarea>
           </div>
-
           <div class="form-row-3">
             <div class="form-group">
               <label>City <span class="req">*</span></label>
@@ -149,10 +139,8 @@
           </div>
         </div>
 
-        <!-- ── SECTION 2: Professional Information ── -->
         <div class="reg-section">
           <div class="reg-section-title">💼 Professional Information</div>
-
           <div class="form-group">
             <label>Position Applied For <span class="req">*</span></label>
             <select id="reg_positionApplied" class="form-input form-select" required>
@@ -166,7 +154,6 @@
               <option value="Other">Other</option>
             </select>
           </div>
-
           <div class="form-row-2">
             <div class="form-group">
               <label>Highest Education</label>
@@ -177,27 +164,22 @@
               <input type="number" id="reg_experienceYears" class="form-input" placeholder="0" min="0" max="50" value="0">
             </div>
           </div>
-
           <div class="form-group">
             <label>Previous Company</label>
             <input type="text" id="reg_previousCompany" class="form-input" placeholder="Leave blank if fresher">
           </div>
-
           <div class="form-group">
             <label>LinkedIn Profile</label>
             <input type="url" id="reg_linkedin" class="form-input" placeholder="https://linkedin.com/in/yourprofile">
           </div>
-
           <div class="form-group">
             <label>Referred By</label>
             <input type="text" id="reg_referredBy" class="form-input" placeholder="Name of employee who referred you (if any)">
           </div>
         </div>
 
-        <!-- ── SECTION 3: Emergency Contact ── -->
         <div class="reg-section">
           <div class="reg-section-title">🆘 Emergency Contact</div>
-
           <div class="form-row-2">
             <div class="form-group">
               <label>Contact Name</label>
@@ -210,13 +192,9 @@
           </div>
         </div>
 
-        <!-- ── SECTION 4: Government IDs ── -->
         <div class="reg-section">
           <div class="reg-section-title">🪪 Government IDs</div>
-          <div class="reg-privacy-note">
-            🔒 This information is encrypted and stored securely. Accessible only to authorised HR personnel.
-          </div>
-
+          <div class="reg-privacy-note">🔒 This information is encrypted and stored securely. Accessible only to authorised HR personnel.</div>
           <div class="form-row-2">
             <div class="form-group">
               <label>Aadhar Number</label>
@@ -229,18 +207,13 @@
           </div>
         </div>
 
-        <!-- ── SECTION 5: Bank Details ── -->
         <div class="reg-section">
           <div class="reg-section-title">🏦 Bank Details</div>
-          <div class="reg-privacy-note">
-            🔒 Required for salary processing. Stored securely and only shared with Finance team.
-          </div>
-
+          <div class="reg-privacy-note">🔒 Required for salary processing. Stored securely and only shared with Finance team.</div>
           <div class="form-group">
             <label>Bank Account Number</label>
             <input type="text" id="reg_bankAccount" class="form-input" placeholder="Account number">
           </div>
-
           <div class="form-row-2">
             <div class="form-group">
               <label>IFSC Code</label>
@@ -253,7 +226,6 @@
           </div>
         </div>
 
-        <!-- Terms -->
         <div class="reg-terms-wrap">
           <label class="reg-terms-label">
             <input type="checkbox" id="reg_terms" class="reg-checkbox">
@@ -268,11 +240,9 @@
           <span id="regBtnText">Submit Registration</span>
           <span id="regBtnLoader" class="btn-loader" style="display:none;"><div class="spinner-small"></div></span>
         </button>
-
         <div style="text-align:center;margin-top:16px;">
           <button type="button" onclick="showLoginFromRegister()" class="btn-register">Already registered? Sign In</button>
         </div>
-
       </form>
     </div>
   </div>
@@ -360,6 +330,11 @@
             <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a7.5 7.5 0 0 0 0-6M4.6 9a7.5 7.5 0 0 0 0 6"/></svg>
             Operations
           </button>
+          <!-- Ops Settings — only for ops team -->
+          <button class="menu-item" id="opsSettingsMenuBtn" onclick="showOpsSettings()" style="display:none;">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Ops Settings
+          </button>
           <button class="menu-item" onclick="showAnnouncements()">
             <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11l18-5v12l-18-5z"/><path d="M11 19a3 3 0 0 1-6 0"/></svg>
             Announcements
@@ -374,7 +349,7 @@
           </button>
           <button class="menu-item" onclick="showAbout()">
             <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-            About
+            About &amp; Help
           </button>
           <button class="menu-item logout-btn" onclick="logout()">
             <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 17l5-5-5-5M21 12H9"/><path d="M4 4h5v16H4"/></svg>
@@ -409,13 +384,23 @@
           <div class="greeting-name" id="greetingName"></div>
         </div>
       </div>
+
+      <!-- Dashboard Cards — 3-column top row + 3-column bottom row -->
       <div class="dash-grid">
+        <!-- Row 1 -->
         <div class="dash-card dash-card-request" onclick="showDataRequestPortal()">
           <div class="dash-card-icon">📤</div>
           <div class="dash-card-label">Request Data</div>
           <div class="dash-card-sub" id="dashPendingReq">— pending</div>
           <div class="dash-card-arrow">→</div>
         </div>
+        <div class="dash-card dash-card-yssr" onclick="showLinksView()">
+          <div class="dash-card-icon">🏆</div>
+          <div class="dash-card-label" id="dashYSSRLabel">YSSR</div>
+          <div class="dash-card-amount" id="dashYSSRValue">—</div>
+          <div class="dash-card-arrow">→</div>
+        </div>
+        <!-- Row 2 -->
         <div class="dash-card dash-card-incentive" onclick="showIncentiveView()">
           <div class="dash-card-icon">💰</div>
           <div class="dash-card-label">Incentive Earned</div>
@@ -435,6 +420,7 @@
           <div class="dash-card-arrow">→</div>
         </div>
       </div>
+
       <div class="section-header">
         <div class="section-title-main">Quick Links</div>
         <div id="loadingSpinner" class="spinner-inline"></div>
@@ -497,6 +483,15 @@
       <div id="operationsContainer"></div>
     </main>
 
+    <!-- OPS SETTINGS VIEW -->
+    <main class="main-content" id="opsSettingsView" style="display:none;">
+      <div class="page-header">
+        <button onclick="showLinksView()" class="back-btn">← Back</button>
+        <h1>⚙️ Ops Settings</h1><p>User presence &amp; broadcast notifications</p>
+      </div>
+      <div id="opsSettingsContainer"></div>
+    </main>
+
     <!-- TEAM VIEW -->
     <main class="main-content" id="teamView" style="display:none;">
       <div class="page-header">
@@ -521,7 +516,7 @@
     <main class="main-content" id="payslipView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>PaySlip</h1><p>Monthly salary & tax slips</p>
+        <h1>PaySlip</h1><p>Monthly salary &amp; tax slips</p>
       </div>
       <div id="payslipContainer"></div>
     </main>
@@ -545,6 +540,7 @@
       </div>
       <div id="notificationsContent" class="notifications-content"></div>
     </div>
+
   </div><!-- /mainScreen -->
 
   <!-- OFFLINE -->
