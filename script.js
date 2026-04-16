@@ -396,7 +396,7 @@ function openLink(url) {
 }
 
 // ── VIEW NAVIGATION ───────────────────────────────────────────
-const VIEWS = ['linksView','dataRequestView','myRequestsView','operationsView','teamView','incentiveView','payslipView','profileView','opsSettingsView'];
+const VIEWS = ['linksView','dataRequestView','myRequestsView','operationsView','teamView','incentiveView','payslipView','profileView','opsSettingsView','attendanceView'];
 
 function showView(id) {
   VIEWS.forEach(v => {
@@ -413,7 +413,6 @@ function showTeamView()          { showView('teamView');        closeMenu(); loa
 function showIncentiveView()     { showView('incentiveView');   closeMenu(); loadIncentiveView(); }
 function showPayslipView()       { showView('payslipView');     closeMenu(); loadPayslips(); }
 function showProfileView()       { showView('profileView');     closeMenu(); loadProfile(); }
-function showAttendanceView()    { closeMenu(); showToast('Attendance feature coming soon! 🚀', 'info'); }
 function showOpsSettings()       { showView('opsSettingsView'); closeMenu(); loadOpsSettings(); }
 
 function resetRequestForm() {
