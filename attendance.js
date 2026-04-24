@@ -1,11 +1,10 @@
 // ============================================================
-// THORE INDIA PORTAL — attendance.js v1.0
+// THORE INDIA PORTAL — attendance.js v1.1
 // Attendance, Calendar, Leave Management, Reports
 // Include this AFTER script.js in index.html
 // ============================================================
 
 // ── ATTENDANCE API URL ────────────────────────────────────────
-// Replace with your deployed Google Apps Script URL
 const ATTENDANCE_API_URL = 'https://script.google.com/macros/s/AKfycbyUbovfTpc9eTGxr5ZnurDrATyvYq3-x0dgYy2k6YpsP_bScNrBisV-0DLgs2Y1_X7ABQ/exec';
 
 async function attApiCall(action, params = {}) {
@@ -27,6 +26,9 @@ let attCalendarYear  = new Date().getFullYear();
 let attCalendarMonth = new Date().getMonth() + 1;
 let attMonthData     = null;
 let leaveTeamData    = [];
+
+// ── CACHED today record (used for optimistic UI) ─────────────
+let _cachedTodayRecord = null;
 
 // ── SHOW ATTENDANCE VIEW ──────────────────────────────────────
 function showAttendanceView() {
@@ -78,7 +80,6 @@ function switchAttTab(tab) {
   if (tabEl)   tabEl.classList.add('active');
   if (panelEl) panelEl.style.display = 'block';
 
-  // Lazy load panels
   switch (tab) {
     case 'checkin':  loadCheckinPanel();  break;
     case 'calendar': loadCalendarPanel(); break;
@@ -91,102 +92,122 @@ function switchAttTab(tab) {
 // ════════════════════════════════════════════════════════════
 // TAB 1: CHECK IN / OUT
 // ════════════════════════════════════════════════════════════
-async function loadCheckinPanel() {
+async function loadCheckinPanel(optimisticRecord) {
   const panel = document.getElementById('att-panel-checkin');
   if (!panel) return;
 
-  panel.innerHTML = `<div class="att-loading"><div class="spinner"></div></div>`;
+  // If we have an optimistic record passed in, use it immediately — don't flash spinner
+  if (!optimisticRecord) {
+    panel.innerHTML = `<div class="att-loading"><div class="spinner"></div></div>`;
+  }
 
   try {
-    const [todayResult, balResult] = await Promise.all([
-      attApiCall('getTodayAttendance', { userEmail: currentUser.email }),
-      attApiCall('getLeaveBalance',    { userEmail: currentUser.email })
-    ]);
+    let record, balance;
 
-    const record  = todayResult.record;
-    const balance = balResult.balance || {};
-    const now     = new Date();
-    const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    if (optimisticRecord) {
+      // Use the result we already have; fetch balance in parallel silently
+      record = optimisticRecord;
+      _cachedTodayRecord = record;
+      const balResult = await attApiCall('getLeaveBalance', { userEmail: currentUser.email });
+      balance = balResult.balance || {};
+    } else {
+      // Normal load: fetch both; add cache-busting param to avoid stale GAS response
+      const [todayResult, balResult] = await Promise.all([
+        attApiCall('getTodayAttendance', { userEmail: currentUser.email, _t: Date.now() }),
+        attApiCall('getLeaveBalance',    { userEmail: currentUser.email })
+      ]);
+      // Prefer the fetched record, but fall back to cache if API returns null
+      // (handles the GAS execution-delay window)
+      record  = todayResult.record || _cachedTodayRecord || null;
+      balance = balResult.balance || {};
+      if (todayResult.record) _cachedTodayRecord = todayResult.record;
+    }
 
-    const hasCheckedIn  = record && record.checkInTime;
-    const hasCheckedOut = record && record.checkOutTime;
-
-    panel.innerHTML = `
-      <!-- Date & Time Banner -->
-      <div class="att-date-banner">
-        <div class="att-date-text">${dateStr}</div>
-        <div class="att-live-time" id="attLiveTime">${formatLiveTime(now)}</div>
-      </div>
-
-      <!-- Status Card -->
-      <div class="att-status-card ${hasCheckedIn ? (hasCheckedOut ? 'status-done' : 'status-in') : 'status-out'}">
-        <div class="att-status-icon">${hasCheckedIn ? (hasCheckedOut ? '✅' : '🟢') : '🔴'}</div>
-        <div class="att-status-info">
-          <div class="att-status-title">
-            ${hasCheckedIn ? (hasCheckedOut ? 'Day Complete' : 'Currently Checked In') : 'Not Checked In'}
-          </div>
-          <div class="att-status-sub">
-            ${hasCheckedIn
-              ? `Check-in: <strong>${record.checkInTime}</strong>${hasCheckedOut ? ` &nbsp;·&nbsp; Check-out: <strong>${record.checkOutTime}</strong>` : ''}`
-              : 'Tap below to mark your attendance'}
-          </div>
-          ${hasCheckedOut
-            ? `<div class="att-hours-chip">⏱ ${record.workingHours}h worked today</div>`
-            : ''}
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="att-actions">
-        ${!hasCheckedIn ? `
-          <div class="att-geo-note">📍 Location will be captured automatically</div>
-          <div class="form-group" style="margin-bottom:12px">
-            <label style="font-size:13px;color:var(--text-muted)">Optional note</label>
-            <input type="text" id="checkInRemarks" class="form-input" placeholder="e.g. WFH, Field visit...">
-          </div>
-          <button class="att-action-btn btn-checkin" onclick="doCheckIn()">
-            <span class="att-btn-icon">👆</span> Check In Now
-          </button>
-        ` : !hasCheckedOut ? `
-          <div class="att-time-running">
-            <span id="timeWorkedDisplay">Calculating...</span>
-          </div>
-          <div class="form-group" style="margin-bottom:12px">
-            <label style="font-size:13px;color:var(--text-muted)">Optional note</label>
-            <input type="text" id="checkOutRemarks" class="form-input" placeholder="e.g. End of day...">
-          </div>
-          <button class="att-action-btn btn-checkout" onclick="doCheckOut()">
-            <span class="att-btn-icon">👋</span> Check Out Now
-          </button>
-        ` : `
-          <div class="att-done-msg">
-            🎉 Great job! You've completed today's attendance.<br>
-            <small style="color:var(--text-muted)">Status: <strong>${record.status}</strong></small>
-          </div>
-        `}
-      </div>
-
-      <!-- Leave Balance Cards -->
-      <div class="att-balance-section">
-        <div class="att-section-title">Leave Balance (${now.getFullYear()})</div>
-        <div class="att-balance-grid">
-          ${renderBalanceCard('Sick', balance.sick ?? 6, '#ef4444')}
-          ${renderBalanceCard('Casual', balance.casual ?? 6, '#3b82f6')}
-          ${renderBalanceCard('Earned', balance.earned ?? 12, '#22c55e')}
-          ${renderBalanceCard('Comp-Off', balance.compOff ?? 0, '#f59e0b')}
-        </div>
-      </div>
-
-      <div id="checkin-error" class="error-message"></div>
-      <div id="checkin-success" class="success-message"></div>
-    `;
-
-    // Start live clock
-    startLiveClock(record);
+    renderCheckinPanel(panel, record, balance);
 
   } catch (err) {
     panel.innerHTML = `<div class="empty-state">Error loading attendance. Please try again.</div>`;
   }
+}
+
+function renderCheckinPanel(panel, record, balance) {
+  const now     = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const hasCheckedIn  = record && record.checkInTime;
+  const hasCheckedOut = record && record.checkOutTime;
+
+  panel.innerHTML = `
+    <!-- Date & Time Banner -->
+    <div class="att-date-banner">
+      <div class="att-date-text">${dateStr}</div>
+      <div class="att-live-time" id="attLiveTime">${formatLiveTime(now)}</div>
+    </div>
+
+    <!-- Status Card -->
+    <div class="att-status-card ${hasCheckedIn ? (hasCheckedOut ? 'status-done' : 'status-in') : 'status-out'}">
+      <div class="att-status-icon">${hasCheckedIn ? (hasCheckedOut ? '✅' : '🟢') : '🔴'}</div>
+      <div class="att-status-info">
+        <div class="att-status-title">
+          ${hasCheckedIn ? (hasCheckedOut ? 'Day Complete' : 'Currently Checked In') : 'Not Checked In'}
+        </div>
+        <div class="att-status-sub">
+          ${hasCheckedIn
+            ? `Check-in: <strong>${record.checkInTime}</strong>${hasCheckedOut ? ` &nbsp;·&nbsp; Check-out: <strong>${record.checkOutTime}</strong>` : ''}`
+            : 'Tap below to mark your attendance'}
+        </div>
+        ${hasCheckedOut
+          ? `<div class="att-hours-chip">⏱ ${record.workingHours}h worked today</div>`
+          : ''}
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="att-actions">
+      ${!hasCheckedIn ? `
+        <div class="att-geo-note">📍 Location will be captured automatically</div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label style="font-size:13px;color:var(--text-muted)">Optional note</label>
+          <input type="text" id="checkInRemarks" class="form-input" placeholder="e.g. WFH, Field visit...">
+        </div>
+        <button class="att-action-btn btn-checkin" onclick="doCheckIn()">
+          <span class="att-btn-icon">👆</span> Check In Now
+        </button>
+      ` : !hasCheckedOut ? `
+        <div class="att-time-running">
+          <span id="timeWorkedDisplay">Calculating...</span>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label style="font-size:13px;color:var(--text-muted)">Optional note</label>
+          <input type="text" id="checkOutRemarks" class="form-input" placeholder="e.g. End of day...">
+        </div>
+        <button class="att-action-btn btn-checkout" onclick="doCheckOut()">
+          <span class="att-btn-icon">👋</span> Check Out Now
+        </button>
+      ` : `
+        <div class="att-done-msg">
+          🎉 Great job! You've completed today's attendance.<br>
+          <small style="color:var(--text-muted)">Status: <strong>${record.status}</strong></small>
+        </div>
+      `}
+    </div>
+
+    <!-- Leave Balance Cards -->
+    <div class="att-balance-section">
+      <div class="att-section-title">Leave Balance (${now.getFullYear()})</div>
+      <div class="att-balance-grid">
+        ${renderBalanceCard('Sick', balance.sick ?? 6, '#ef4444')}
+        ${renderBalanceCard('Casual', balance.casual ?? 6, '#3b82f6')}
+        ${renderBalanceCard('Earned', balance.earned ?? 12, '#22c55e')}
+        ${renderBalanceCard('Comp-Off', balance.compOff ?? 0, '#f59e0b')}
+      </div>
+    </div>
+
+    <div id="checkin-error" class="error-message"></div>
+    <div id="checkin-success" class="success-message"></div>
+  `;
+
+  startLiveClock(record);
 }
 
 function renderBalanceCard(label, value, color) {
@@ -219,9 +240,9 @@ function startLiveClock(record) {
           return h * 60 + m;
         };
         try {
-          const ciMins = parseTime(record.checkInTime);
+          const ciMins  = parseTime(record.checkInTime);
           const nowMins = now.getHours() * 60 + now.getMinutes();
-          const diff = Math.max(0, nowMins - ciMins);
+          const diff    = Math.max(0, nowMins - ciMins);
           const h = Math.floor(diff / 60);
           const m = diff % 60;
           elapsed.textContent = `⏱ ${h}h ${m}m worked since check-in`;
@@ -234,7 +255,6 @@ function startLiveClock(record) {
 async function doCheckIn() {
   const btn     = document.querySelector('.btn-checkin');
   const errDiv  = document.getElementById('checkin-error');
-  const sucDiv  = document.getElementById('checkin-success');
   const remarks = document.getElementById('checkInRemarks')?.value.trim();
 
   if (btn) { btn.disabled = true; btn.textContent = 'Getting location...'; }
@@ -261,7 +281,23 @@ async function doCheckIn() {
 
     if (result.success) {
       showToast('Check-in successful! ✅', 'success');
-      loadCheckinPanel();
+
+      // ── FIX: Build an optimistic record from the API response
+      // and render immediately — don't wait for a slow re-fetch.
+      const optimistic = {
+        recordId:     result.recordId,
+        date:         result.date,
+        checkInTime:  result.checkInTime,
+        checkOutTime: '',
+        status:       'Present',
+        workingHours: 0,
+        remarks:      remarks
+      };
+      _cachedTodayRecord = optimistic;
+      const balResult = await attApiCall('getLeaveBalance', { userEmail: currentUser.email });
+      const panel = document.getElementById('att-panel-checkin');
+      if (panel) renderCheckinPanel(panel, optimistic, balResult.balance || {});
+
     } else {
       if (errDiv) { errDiv.textContent = result.message; errDiv.classList.add('show'); }
       if (btn) { btn.disabled = false; btn.innerHTML = '<span class="att-btn-icon">👆</span> Check In Now'; }
@@ -297,7 +333,19 @@ async function doCheckOut() {
 
     if (result.success) {
       showToast(`Check-out done! ${result.workingHours}h worked 🎉`, 'success');
-      loadCheckinPanel();
+
+      // ── FIX: Build optimistic record for immediate UI update
+      const optimistic = {
+        ...(  _cachedTodayRecord || {}),
+        checkOutTime: result.checkOutTime,
+        workingHours: result.workingHours,
+        status:       result.status
+      };
+      _cachedTodayRecord = optimistic;
+      const balResult = await attApiCall('getLeaveBalance', { userEmail: currentUser.email });
+      const panel = document.getElementById('att-panel-checkin');
+      if (panel) renderCheckinPanel(panel, optimistic, balResult.balance || {});
+
     } else {
       if (errDiv) { errDiv.textContent = result.message; errDiv.classList.add('show'); }
       if (btn) { btn.disabled = false; btn.innerHTML = '<span class="att-btn-icon">👋</span> Check Out Now'; }
@@ -340,17 +388,13 @@ function renderCalendar(data) {
   const monthName = new Date(attCalendarYear, attCalendarMonth - 1, 1)
     .toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 
-  // Build day map
   const dayMap = {};
   days.forEach(d => dayMap[d.date] = d);
 
-  // First day of month
   const firstDay = new Date(attCalendarYear, attCalendarMonth - 1, 1).getDay();
   const totalDays = new Date(attCalendarYear, attCalendarMonth, 0).getDate();
 
-  // Build calendar cells
   let calCells = '';
-  // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
     calCells += `<div class="cal-cell cal-empty"></div>`;
   }
@@ -369,14 +413,12 @@ function renderCalendar(data) {
   }
 
   panel.innerHTML = `
-    <!-- Month Navigator -->
     <div class="cal-nav">
       <button class="cal-nav-btn" onclick="changeCalMonth(-1)">‹</button>
       <div class="cal-month-title">${monthName}</div>
       <button class="cal-nav-btn" onclick="changeCalMonth(1)">›</button>
     </div>
 
-    <!-- Summary Pills -->
     <div class="cal-summary-row">
       ${renderSummaryPill('Present',  summary.present,  '#22c55e')}
       ${renderSummaryPill('Absent',   summary.absent,   '#ef4444')}
@@ -384,7 +426,6 @@ function renderCalendar(data) {
       ${renderSummaryPill('Half-Day', summary.halfDay,  '#f59e0b')}
     </div>
 
-    <!-- Legend -->
     <div class="cal-legend">
       <span><span class="cal-dot dot-present"></span>Present</span>
       <span><span class="cal-dot dot-absent"></span>Absent</span>
@@ -393,13 +434,11 @@ function renderCalendar(data) {
       <span><span class="cal-dot dot-weekend"></span>Weekend</span>
     </div>
 
-    <!-- Day Headers -->
     <div class="cal-grid">
       ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="cal-header-cell">${d}</div>`).join('')}
       ${calCells}
     </div>
 
-    <!-- Stats -->
     <div class="cal-stats">
       <div class="cal-stat-item">
         <span class="cal-stat-num">${summary.totalWorkingDays}</span>
@@ -415,7 +454,6 @@ function renderCalendar(data) {
       </div>
     </div>
 
-    <!-- Day detail popup placeholder -->
     <div id="dayDetailPopup"></div>
   `;
 }
@@ -509,7 +547,7 @@ async function loadLeavePanel() {
 function renderLeavePanel(myLeaves, balance, pendingLeaves) {
   const panel = document.getElementById('att-panel-leave');
 
-  const today = new Date();
+  const today   = new Date();
   const minDate = today.toISOString().split('T')[0];
 
   panel.innerHTML = `
@@ -579,7 +617,6 @@ function renderLeavePanel(myLeaves, balance, pendingLeaves) {
     </div>
   `;
 
-  // Auto-calculate days on date change
   document.getElementById('leaveFrom')?.addEventListener('change', updateLeaveCount);
   document.getElementById('leaveTo')?.addEventListener('change', updateLeaveCount);
 }
@@ -797,7 +834,6 @@ function renderReport(report, container) {
       <div class="report-title">${report.monthName} ${report.year} — Attendance Report</div>
       <div class="report-emp">👤 ${escapeHtml(report.userName)}</div>
 
-      <!-- Summary Metrics -->
       <div class="report-metrics">
         <div class="rep-metric rep-present">
           <div class="rep-metric-num">${summary.present}</div>
@@ -817,7 +853,6 @@ function renderReport(report, container) {
         </div>
       </div>
 
-      <!-- Progress Bar -->
       <div class="report-att-bar-wrap">
         <div class="report-att-bar-label">Attendance: <strong>${attPct}%</strong></div>
         <div class="report-att-bar-bg">
@@ -825,13 +860,11 @@ function renderReport(report, container) {
         </div>
       </div>
 
-      <!-- Stats Row -->
       <div class="report-stats-row">
         <span>🗓 Working Days: <strong>${summary.totalWorkingDays}</strong></span>
         <span>⏱ Hours Worked: <strong>${summary.totalWorkHours}h</strong></span>
       </div>
 
-      <!-- Daily Detail Table -->
       <div class="att-section-title" style="margin-top:20px">Daily Breakdown</div>
       <div class="report-table-wrap">
         <table class="report-table">
@@ -858,7 +891,6 @@ function renderReport(report, container) {
         </table>
       </div>
 
-      <!-- Download Buttons -->
       <div class="report-download-btns">
         <button class="btn-download-excel" onclick="downloadReportExcel()">
           📊 Download Excel
@@ -870,18 +902,15 @@ function renderReport(report, container) {
     </div>
   `;
 
-  // Store for download
   window._currentReport = report;
 }
 
-// ── EXCEL DOWNLOAD ────────────────────────────────────────────
 function downloadReportExcel() {
   const report = window._currentReport;
   if (!report) return;
 
-  const { summary, days, report: r } = { report, ...report };
+  const { summary, days } = report;
 
-  // Build CSV (which Excel opens natively)
   let csv = `THORE India — Attendance Report\n`;
   csv += `Employee,${report.userName}\n`;
   csv += `Month,${report.monthName} ${report.year}\n\n`;
@@ -909,7 +938,6 @@ function downloadReportExcel() {
   showToast('Excel report downloaded! 📊', 'success');
 }
 
-// ── PDF DOWNLOAD ──────────────────────────────────────────────
 function downloadReportPDF() {
   const report = window._currentReport;
   if (!report) return;
