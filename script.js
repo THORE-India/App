@@ -268,6 +268,14 @@ async function checkIfOperationsTeam() {
     if (result.isOperationsTeam) {
       document.getElementById('opsMenuBtn').style.display = 'flex';
       document.getElementById('opsSettingsMenuBtn').style.display = 'flex';
+      // Show ops dashboard quick-access card
+      const opsCard = document.getElementById('dashOpsCard');
+      if (opsCard) opsCard.style.display = 'flex';
+      // Populate the pending count shown on the card
+      try {
+        const pendingReqs = await apiCall('getAllPendingRequests', {});
+        if (Array.isArray(pendingReqs)) setEl('dashPendingOps', pendingReqs.length + ' pending');
+      } catch(_e) {}
     }
   } catch {}
 }
