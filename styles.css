@@ -137,6 +137,7 @@ body {
 .dash-card-incentive{ border-left:3px solid var(--gold); }
 .dash-card-paid     { border-left:3px solid var(--success); }
 .dash-card-pending  { border-left:3px solid var(--warning); }
+.dash-card-ops { border-left:3px solid #ef4444; }
 
 .section-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
 .section-title-main { font-size:18px; font-weight:700; color:var(--text); }
