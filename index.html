@@ -329,7 +329,7 @@
           </button>
           <button class="menu-item" id="opsMenuBtn" onclick="showOperationsPanel()" style="display:none;">
             <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a7.5 7.5 0 0 0 0-6M4.6 9a7.5 7.5 0 0 0 0 6"/></svg>
-            Operations
+            Manage Data Requests
           </button>
           <!-- Ops Settings — only for ops team -->
           <button class="menu-item" id="opsSettingsMenuBtn" onclick="showOpsSettings()" style="display:none;">
@@ -422,6 +422,14 @@
         </div>
       </div>
 
+      <!-- Ops card: only visible to operations team members -->
+        <div class="dash-card dash-card-ops" id="dashOpsCard" onclick="showOperationsPanel()" style="display:none;">
+          <div class="dash-card-icon">📋</div>
+          <div class="dash-card-label">Manage Requests</div>
+          <div class="dash-card-sub" id="dashPendingOps">— pending</div>
+          <div class="dash-card-arrow">→</div>
+        </div>
+
       <div class="section-header">
         <div class="section-title-main">Quick Links</div>
         <div id="loadingSpinner" class="spinner-inline"></div>
@@ -477,7 +485,7 @@
     <main class="main-content" id="operationsView" style="display:none;">
       <div class="page-header">
         <button onclick="showLinksView()" class="back-btn">← Back</button>
-        <h1>Operations Panel</h1><p>Manage data requests</p>
+        <h1>Manage Data Requests</h1><p>Review &amp; action pending requests</p>
       </div>
       <div id="operationsStatsContainer" class="stats-container"></div>
       <div id="operationsLoading" class="loading"><div class="spinner"></div><p>Loading...</p></div>
