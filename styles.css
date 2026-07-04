@@ -396,6 +396,16 @@ body {
 .reg-terms-label { display:flex; gap:12px; align-items:flex-start; cursor:pointer; font-size:13px; color:var(--text-sm); line-height:1.5; }
 .reg-checkbox { width:18px; height:18px; accent-color:var(--gold); flex-shrink:0; margin-top:2px; cursor:pointer; }
 
+/* ── CALCULATORS (YSSR + Incentive) ────────────────────────── */
+.calc-card { background:linear-gradient(135deg,var(--bg-card2),var(--bg-card)); border:1px solid var(--border); border-radius:12px; padding:20px; }
+.form-label { display:block; font-size:13px; color:var(--text-muted); margin-bottom:6px; font-weight:600; }
+.calc-result { background:rgba(212,175,55,.06); border:1px solid rgba(212,175,55,.2); border-radius:10px; padding:16px; }
+.calc-result-headline { font-size:22px; font-weight:700; color:var(--gold); margin-bottom:10px; }
+.calc-result-row { display:flex; justify-content:space-between; font-size:13px; color:var(--text-sm); padding:4px 0; border-bottom:1px dashed var(--border); }
+.calc-result-row:last-child { border-bottom:none; }
+.calc-result-row .val { color:var(--text); font-weight:600; }
+.calc-total-row { display:flex; justify-content:space-between; font-size:16px; font-weight:700; color:var(--text); margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+
 /* ── RESPONSIVE ─────────────────────────────────────────────── */
 @media (min-width:768px) {
   .main-content   { max-width:900px; margin:0 auto; }
