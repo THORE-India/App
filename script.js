@@ -291,10 +291,9 @@ async function checkTeamAccess() {
 async function loadDashboardStats() {
   if (!currentUser) return;
   try {
-    const [sensitiveStats, requests, yssrData] = await Promise.all([
+    const [sensitiveStats, requests] = await Promise.all([
       secureApiCall('getDashboardStats', { userEmail: currentUser.email }),
-      apiCall('getUserRequests', { userEmail: currentUser.email }),
-      apiCall('getYSSR', { userEmail: currentUser.email })
+      apiCall('getUserRequests', { userEmail: currentUser.email })
     ]);
 
     if (sensitiveStats.success) {
@@ -309,11 +308,9 @@ async function loadDashboardStats() {
       setEl('dashPendingReq', pending + ' pending');
     }
 
-    // YSSR card
-    if (yssrData && yssrData.success) {
-      setEl('dashYSSRValue', yssrData.value || '—');
-      setEl('dashYSSRLabel', yssrData.label || 'YSSR');
-    }
+    // YSSR is now a calculator (no longer pulled from a database value)
+    setEl('dashYSSRValue', 'Calculate →');
+    setEl('dashYSSRLabel', 'YSSR');
   } catch (err) {
     console.error('Dashboard stats error:', err);
   }
@@ -404,7 +401,7 @@ function openLink(url) {
 }
 
 // ── VIEW NAVIGATION ───────────────────────────────────────────
-const VIEWS = ['linksView','dataRequestView','myRequestsView','operationsView','teamView','incentiveView','payslipView','profileView','opsSettingsView','attendanceView'];
+const VIEWS = ['linksView','dataRequestView','myRequestsView','operationsView','teamView','incentiveView','payslipView','profileView','opsSettingsView','attendanceView','yssrView','incentiveCalcView'];
 
 function showView(id) {
   VIEWS.forEach(v => {
@@ -422,6 +419,8 @@ function showIncentiveView()     { showView('incentiveView');   closeMenu(); loa
 function showPayslipView()       { showView('payslipView');     closeMenu(); loadPayslips(); }
 function showProfileView()       { showView('profileView');     closeMenu(); loadProfile(); }
 function showOpsSettings()       { showView('opsSettingsView'); closeMenu(); loadOpsSettings(); }
+function showYSSRView()          { showView('yssrView');        closeMenu(); loadYSSRView(); }
+function showIncentiveCalcView() { showView('incentiveCalcView'); closeMenu(); resetIncentiveCalc(); }
 
 function resetRequestForm() {
   document.getElementById('remarks').value = '';
@@ -853,26 +852,8 @@ function displayMyIncentives(data) {
       </div>
     </div>`;
 
-  if (data.incentives && data.incentives.length) {
-    html += '<div class="incentive-list">';
-    data.incentives.forEach(inc => {
-      const sc = inc.status === 'Paid' ? 'status-completed' : 'status-pending';
-      html += `
-        <div class="incentive-row">
-          <div class="incentive-row-left">
-            <div class="incentive-month">${escapeHtml(inc.month)}</div>
-            <div class="incentive-desc">${escapeHtml(inc.description || '—')}</div>
-          </div>
-          <div class="incentive-row-right">
-            <div class="incentive-amt">₹${formatNum(inc.amount)}</div>
-            <span class="request-status ${sc}">${escapeHtml(inc.status)}</span>
-          </div>
-        </div>`;
-    });
-    html += '</div>';
-  } else {
-    html += `<div class="empty-state"><div class="empty-icon">💰</div><p>No incentive records yet</p></div>`;
-  }
+  // NOTE: month-wise itemized incentives are no longer shown —
+  // only the aggregate totals above (Generated / Paid / Pending).
   section.innerHTML = html;
 }
 
@@ -924,26 +905,7 @@ function displayTeamIncentives(data, filterEmail) {
           </div>
         </div>
       </div>`;
-
-    // Show individual incentive breakdown if filtered to one member
-    if (filterEmail && member.incentives && member.incentives.length) {
-      html += `<div class="incentive-list" style="margin-left:12px;margin-bottom:16px">`;
-      member.incentives.forEach(inc => {
-        const sc = inc.status === 'Paid' ? 'status-completed' : 'status-pending';
-        html += `
-          <div class="incentive-row">
-            <div class="incentive-row-left">
-              <div class="incentive-month">${escapeHtml(inc.month)}</div>
-              <div class="incentive-desc">${escapeHtml(inc.description || '—')}</div>
-            </div>
-            <div class="incentive-row-right">
-              <div class="incentive-amt">₹${formatNum(inc.amount)}</div>
-              <span class="request-status ${sc}">${escapeHtml(inc.status)}</span>
-            </div>
-          </div>`;
-      });
-      html += `</div>`;
-    }
+    // NOTE: per-member month-wise breakdown removed — totals only.
   });
 
   section.innerHTML = html;
@@ -953,6 +915,142 @@ function filterTeamIncentive(email) {
   if (_teamIncentiveData) {
     displayTeamIncentives(_teamIncentiveData, email || null);
   }
+}
+
+// ── YSSR CALCULATOR ───────────────────────────────────────────
+// YSSR = Total Revenue (fiscal-year-to-date, Apr–Mar) / Total Salary Credited
+// Total Salary Credited = monthly salary input × months elapsed in the
+// fiscal year up to (and including) the chosen calculation date.
+// e.g. calculating on 5 Jun 2026 → Apr + May + Jun = 3 months.
+function loadYSSRView() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('yssrSelfDate').value = today;
+  document.getElementById('yssrSelfSalary').value = '';
+  document.getElementById('yssrSelfResult').innerHTML = '';
+
+  document.getElementById('yssrTeamWrap').style.display = canSeeTeam() ? 'block' : 'none';
+  if (canSeeTeam()) {
+    document.getElementById('yssrTeamDate').value = today;
+    document.getElementById('yssrTeamSalary').value = '';
+    document.getElementById('yssrTeamResult').innerHTML = '';
+  }
+}
+
+async function calculateSelfYSSR() {
+  const dateVal   = document.getElementById('yssrSelfDate').value;
+  const salaryVal = parseFloat(document.getElementById('yssrSelfSalary').value);
+  const resultEl  = document.getElementById('yssrSelfResult');
+
+  if (!dateVal) { resultEl.innerHTML = '<div class="empty-state">Please pick a calculation date.</div>'; return; }
+  if (!salaryVal || salaryVal <= 0) { resultEl.innerHTML = '<div class="empty-state">Please enter your monthly salary.</div>'; return; }
+
+  resultEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const data = await secureApiCall('getRevenueForYSSR', {
+      userEmail: currentUser.email,
+      calcDate: dateVal,
+      mode: 'self'
+    });
+    renderYSSRResult(resultEl, data, salaryVal);
+  } catch (err) {
+    resultEl.innerHTML = '<div class="empty-state">Error calculating YSSR.</div>';
+  }
+}
+
+async function calculateTeamYSSR() {
+  const dateVal   = document.getElementById('yssrTeamDate').value;
+  const salaryVal = parseFloat(document.getElementById('yssrTeamSalary').value);
+  const resultEl  = document.getElementById('yssrTeamResult');
+
+  if (!dateVal) { resultEl.innerHTML = '<div class="empty-state">Please pick a calculation date.</div>'; return; }
+  if (!salaryVal || salaryVal <= 0) { resultEl.innerHTML = '<div class="empty-state">Please enter total team monthly salary cost.</div>'; return; }
+
+  resultEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const data = await secureApiCall('getRevenueForYSSR', {
+      userEmail: currentUser.email,
+      calcDate: dateVal,
+      mode: 'team'
+    });
+    renderYSSRResult(resultEl, data, salaryVal);
+  } catch (err) {
+    resultEl.innerHTML = '<div class="empty-state">Error calculating team YSSR.</div>';
+  }
+}
+
+function renderYSSRResult(resultEl, data, monthlySalary) {
+  if (!data || !data.success) {
+    resultEl.innerHTML = '<div class="empty-state">Error calculating YSSR.</div>';
+    return;
+  }
+  const totalSalary = monthlySalary * data.monthsElapsed;
+  const yssr = totalSalary > 0 ? (data.totalRevenue / totalSalary) : 0;
+
+  resultEl.innerHTML = `
+    <div class="calc-result">
+      <div class="calc-result-headline">YSSR: ${yssr.toFixed(2)}x</div>
+      <div class="calc-result-row"><span>Total Revenue (${escapeHtml(data.fyStartLabel)} – as of ${escapeHtml(data.asOfLabel)})</span><span class="val">₹${formatNum(data.totalRevenue)}</span></div>
+      <div class="calc-result-row"><span>Months Elapsed in FY</span><span class="val">${data.monthsElapsed}</span></div>
+      <div class="calc-result-row"><span>Monthly Salary Input</span><span class="val">₹${formatNum(monthlySalary)}</span></div>
+      <div class="calc-total-row"><span>Total Salary Credited</span><span>₹${formatNum(totalSalary)}</span></div>
+    </div>`;
+}
+
+// ── INCENTIVE CALCULATOR ──────────────────────────────────────
+// Focused project:
+//   SE  = 8% of Brokerage Value + ₹7,500 kicker + FOS (capped ₹20,000)
+//   TL  = 4% of Brokerage Value + ₹2,500 kicker + FOS (remaining after 20,000, capped ₹10,000)
+//   MTL = 2% of Brokerage Value + FOS (remaining after 30,000, capped ₹5,000)
+// Non-focused project: same, minus the kicker.
+const INCENTIVE_RULES = {
+  SE:  { pct: 0.08, kicker: 7500, fosDeduct: 0,     fosCap: 20000 },
+  TL:  { pct: 0.04, kicker: 2500, fosDeduct: 20000, fosCap: 10000 },
+  MTL: { pct: 0.02, kicker: 0,    fosDeduct: 30000, fosCap: 5000 }
+};
+
+function calculateIncentiveEstimate() {
+  const role        = document.getElementById('incCalcRole').value;
+  const projectType = document.getElementById('incCalcProjectType').value; // focused | nonfocused
+  const brokerage   = parseFloat(document.getElementById('incCalcBrokerage').value) || 0;
+  const fosTotal    = parseFloat(document.getElementById('incCalcFos').value) || 0;
+  const resultEl    = document.getElementById('incCalcResult');
+
+  if (brokerage <= 0) {
+    resultEl.innerHTML = '<div class="empty-state">Please enter the Brokerage Value.</div>';
+    return;
+  }
+
+  const rule = INCENTIVE_RULES[role];
+  const isFocused = projectType === 'focused';
+
+  const revenueSharing = rule.pct * brokerage;
+  const kicker = isFocused ? rule.kicker : 0;
+
+  const fosRemaining = Math.max(fosTotal - rule.fosDeduct, 0);
+  const fosIncentive = Math.min(fosRemaining, rule.fosCap);
+
+  const total = revenueSharing + kicker + fosIncentive;
+
+  const roleLabel = { SE: 'Sales Executive', TL: 'Team Leader', MTL: 'Master Team Leader' }[role];
+
+  resultEl.innerHTML = `
+    <div class="calc-result">
+      <div class="calc-result-headline">Total Incentive: ₹${formatNum(total)}</div>
+      <div class="calc-result-row"><span>Role</span><span class="val">${escapeHtml(roleLabel)}</span></div>
+      <div class="calc-result-row"><span>Project Type</span><span class="val">${isFocused ? 'Focused' : 'Non Focused'}</span></div>
+      <div class="calc-result-row"><span>Revenue Sharing (${(rule.pct * 100).toFixed(0)}% of Brokerage Value)</span><span class="val">₹${formatNum(revenueSharing)}</span></div>
+      ${isFocused ? `<div class="calc-result-row"><span>Kicker</span><span class="val">₹${formatNum(kicker)}</span></div>` : ''}
+      <div class="calc-result-row"><span>FOS Incentive (capped ₹${formatNum(rule.fosCap)}${rule.fosDeduct ? `, after deducting ₹${formatNum(rule.fosDeduct)}` : ''})</span><span class="val">₹${formatNum(fosIncentive)}</span></div>
+      <div class="calc-total-row"><span>Total</span><span>₹${formatNum(total)}</span></div>
+    </div>`;
+}
+
+function resetIncentiveCalc() {
+  document.getElementById('incCalcBrokerage').value = '';
+  document.getElementById('incCalcFos').value = '';
+  document.getElementById('incCalcResult').innerHTML = '';
 }
 
 // ── PAYSLIP VIEW ──────────────────────────────────────────────
