@@ -999,10 +999,11 @@ function renderYSSRResult(resultEl, data, monthlySalary) {
 }
 
 // ── INCENTIVE CALCULATOR ──────────────────────────────────────
+// Total Revenue = Brokerage Value × 2%
 // Focused project:
-//   SE  = 8% of Brokerage Value + ₹7,500 kicker + FOS (capped ₹20,000)
-//   TL  = 4% of Brokerage Value + ₹2,500 kicker + FOS (remaining after 20,000, capped ₹10,000)
-//   MTL = 2% of Brokerage Value + FOS (remaining after 30,000, capped ₹5,000)
+//   SE  = 8% of Total Revenue + ₹7,500 kicker + FOS (capped ₹20,000)
+//   TL  = 4% of Total Revenue + ₹2,500 kicker + FOS (remaining after 20,000, capped ₹10,000)
+//   MTL = 2% of Total Revenue + FOS (remaining after 30,000, capped ₹5,000)
 // Non-focused project: same, minus the kicker.
 const INCENTIVE_RULES = {
   SE:  { pct: 0.08, kicker: 7500, fosDeduct: 0,     fosCap: 20000 },
@@ -1025,7 +1026,8 @@ function calculateIncentiveEstimate() {
   const rule = INCENTIVE_RULES[role];
   const isFocused = projectType === 'focused';
 
-  const revenueSharing = rule.pct * brokerage;
+  const totalRevenue = brokerage * 0.02; // Total Revenue = Brokerage Value × 2%
+  const revenueSharing = rule.pct * totalRevenue;
   const kicker = isFocused ? rule.kicker : 0;
 
   const fosRemaining = Math.max(fosTotal - rule.fosDeduct, 0);
@@ -1040,7 +1042,8 @@ function calculateIncentiveEstimate() {
       <div class="calc-result-headline">Total Incentive: ₹${formatNum(total)}</div>
       <div class="calc-result-row"><span>Role</span><span class="val">${escapeHtml(roleLabel)}</span></div>
       <div class="calc-result-row"><span>Project Type</span><span class="val">${isFocused ? 'Focused' : 'Non Focused'}</span></div>
-      <div class="calc-result-row"><span>Revenue Sharing (${(rule.pct * 100).toFixed(0)}% of Brokerage Value)</span><span class="val">₹${formatNum(revenueSharing)}</span></div>
+      <div class="calc-result-row"><span>Total Revenue (Brokerage Value × 2%)</span><span class="val">₹${formatNum(totalRevenue)}</span></div>
+      <div class="calc-result-row"><span>Revenue Sharing (${(rule.pct * 100).toFixed(0)}% of Total Revenue)</span><span class="val">₹${formatNum(revenueSharing)}</span></div>
       ${isFocused ? `<div class="calc-result-row"><span>Kicker</span><span class="val">₹${formatNum(kicker)}</span></div>` : ''}
       <div class="calc-result-row"><span>FOS Incentive (capped ₹${formatNum(rule.fosCap)}${rule.fosDeduct ? `, after deducting ₹${formatNum(rule.fosDeduct)}` : ''})</span><span class="val">₹${formatNum(fosIncentive)}</span></div>
       <div class="calc-total-row"><span>Total</span><span>₹${formatNum(total)}</span></div>
