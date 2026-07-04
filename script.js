@@ -797,6 +797,10 @@ function displayTeam(team) {
         ${member.phone ? `<div class="team-detail-row">📞 <a href="tel:${escapeHtml(member.phone)}" class="team-phone">${escapeHtml(member.phone)}</a></div>` : ''}
         ${member.joinDate ? `<div class="team-detail-row">📅 Joined ${escapeHtml(member.joinDate)}</div>` : ''}
         ${member.designation ? `<div class="team-detail-row">🏷️ ${escapeHtml(member.designation)}</div>` : ''}
+        ${member.cluster ? `<div class="team-detail-row">📍 Cluster: ${escapeHtml(member.cluster)}</div>` : ''}
+        ${member.teamLead ? `<div class="team-detail-row">👤 Team Lead: ${escapeHtml(member.teamLead)}</div>` : ''}
+        ${member.manager ? `<div class="team-detail-row">👤 Manager: ${escapeHtml(member.manager)}</div>` : ''}
+        ${member.pnlHead ? `<div class="team-detail-row">👤 PNL Head: ${escapeHtml(member.pnlHead)}</div>` : ''}
       </div>
     `;
     container.appendChild(card);
@@ -1134,7 +1138,10 @@ function displayProfile(profile) {
         <div class="profile-row"><span class="pd-label">Phone</span><span class="pd-value">${escapeHtml(profile.phone || '—')}</span></div>
         <div class="profile-row"><span class="pd-label">Joined</span><span class="pd-value">${escapeHtml(profile.joinDate || '—')}</span></div>
         <div class="profile-row"><span class="pd-label">Status</span><span class="pd-value status-badge status-completed">${escapeHtml(profile.status)}</span></div>
-        <div class="profile-row"><span class="pd-label">Manager</span><span class="pd-value">${escapeHtml(profile.managedBy || '—')}</span></div>
+        <div class="profile-row"><span class="pd-label">Team Lead</span><span class="pd-value">${escapeHtml(profile.teamLead || '—')}</span></div>
+        <div class="profile-row"><span class="pd-label">Manager</span><span class="pd-value">${escapeHtml(profile.manager || '—')}</span></div>
+        <div class="profile-row"><span class="pd-label">PNL Head</span><span class="pd-value">${escapeHtml(profile.pnlHead || '—')}</span></div>
+        <div class="profile-row"><span class="pd-label">Cluster</span><span class="pd-value">${escapeHtml(profile.cluster || '—')}</span></div>
       </div>
     </div>
 
