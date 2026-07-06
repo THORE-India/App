@@ -8,6 +8,27 @@ const MAIN_API_URL = 'https://script.google.com/macros/s/AKfycbw2XDf03HVFPIILNHN
 const SENSITIVE_API_URL = 'https://script.google.com/macros/s/AKfycbwlyFZlsszFP-poaAu2cyZ7qdFouT14r7njYFDpsJRZQTw76ztsJYxcAD248yEnil4gUQ/exec';
 const SENSITIVE_API_KEY = 'g7Kx4Qp9Zt2Lm8Vd3Rj5Hy6Nc1WsFa0B';
 
+// ── FEATURE FLAGS ─────────────────────────────────────────────
+// Toggle these to hide/show menu sections without deleting any
+// code. Flip a flag back to `true` any time to bring it back.
+const FEATURE_FLAGS = {
+  showPayslip:    false,
+  showAttendance: false,
+  showSettings:   false
+};
+
+function applyFeatureFlags() {
+  const map = {
+    payslipMenuBtn:    FEATURE_FLAGS.showPayslip,
+    attendanceMenuBtn: FEATURE_FLAGS.showAttendance,
+    settingsMenuBtn:   FEATURE_FLAGS.showSettings
+  };
+  Object.keys(map).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = map[id] ? 'flex' : 'none';
+  });
+}
+
 // ── GLOBALS ──────────────────────────────────────────────────
 let currentUser = null;
 let deferredPrompt;
@@ -213,6 +234,7 @@ async function showAnnouncements() {
 function showMainApp() {
   updateUserInfo();
   showScreen('mainScreen');
+  applyFeatureFlags();
   loadLinks();
   checkIfOperationsTeam();
   checkTeamAccess();
@@ -252,7 +274,8 @@ function getRoleTier(role) {
   if (r === 'executive' || r === 'sales executive') return 1;
   if (r === 'team leader' || r === 'tl') return 2;
   if (r === 'manager') return 3;
-  if (r === 'admin') return 4;
+  if (r === 'pnl head' || r === 'pnlhead') return 4;
+  if (r === 'admin') return 5;
   return 0;
 }
 
