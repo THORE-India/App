@@ -1,0 +1,15 @@
+{
+  "latestVersion": "1.0",
+  "versionCode": 1,
+  "forceUpdate": false,
+  "releaseDate": "2026-07-08",
+  "apkUrl": "https://github.com/THORE-India/App/releases/download/v1.0/app-release.apk",
+  "releaseNotes": [
+    "Initial Android release of the THORE App.",
+    "Native Android application.",
+    "Employee CRM access.",
+    "Push notification support.",
+    "Automatic update checking.",
+    "Performance improvements and bug fixes."
+  ]
+}
